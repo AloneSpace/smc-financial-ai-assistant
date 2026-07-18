@@ -12,18 +12,23 @@
 
 ---
 
-## ⚠️ AI Provider Decision — Anthropic Claude (not OpenAI)
+## ⚠️ AI Provider Decision — Dual Provider (OpenAI **or** Anthropic)
 
-> **The AI layer uses Anthropic Claude Opus 4.8 (`claude-opus-4-8`), not OpenAI.**
-> This is a deliberate, user-approved deviation from the original take-home requirement (which specified OpenAI). Everywhere the docs still say "OpenAI"/"gpt-4o", read it as **Anthropic Claude** via the `@anthropic-ai/sdk` Messages API (tool use + streaming). Reference docs are updated to Anthropic incrementally as each phase touches them. Concrete mappings:
+> **The AI layer supports BOTH OpenAI and Anthropic Claude behind a single provider interface.**
+> The active vendor is selected at runtime by `AI_PROVIDER` (`openai` | `anthropic`); the inactive
+> vendor's key may be left blank. Default is `openai` (the take-home ships an OpenAI key). Both
+> use native SDKs — `openai` (Chat Completions + function calling) and `@anthropic-ai/sdk`
+> (Messages API + tool use) — **not** LangChain. Where older docs say only "OpenAI"/"gpt-4o" or
+> only "Anthropic", read it as "the configured provider". Env/config mapping:
 >
-> | Old (OpenAI) | New (Anthropic) |
-> | --- | --- |
-> | `openai` SDK | `@anthropic-ai/sdk` |
-> | `OPENAI_API_KEY` | `ANTHROPIC_API_KEY` |
-> | `OPENAI_MODEL` (`gpt-4o`) | `ANTHROPIC_MODEL` (`claude-opus-4-8`) |
-> | `OPENAI_MAX_HISTORY_MESSAGES` | `ANTHROPIC_MAX_HISTORY_MESSAGES` |
-> | Chat Completions + function calling | Messages API + tool use |
+> | Concern | OpenAI | Anthropic |
+> | --- | --- | --- |
+> | SDK | `openai` | `@anthropic-ai/sdk` |
+> | API key | `OPENAI_API_KEY` | `ANTHROPIC_API_KEY` |
+> | Model | `OPENAI_MODEL` (`gpt-4o`) | `ANTHROPIC_MODEL` (`claude-opus-4-8`) |
+> | Selector | \| `AI_PROVIDER=openai` | `AI_PROVIDER=anthropic` |
+> | History cap | \| `AI_MAX_HISTORY_MESSAGES` (shared, default 20) ||
+> | Mechanism | Chat Completions + function calling | Messages API + tool use |
 
 ---
 
