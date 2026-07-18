@@ -105,6 +105,7 @@ Controller  →  Service  →  Repository / Entity
 - **Feature-based structure.** `src/features/auth/`, `src/features/chat/`, `src/features/conversations/`.
 - **Logic in hooks, not components.** Components render. Hooks compute.
 - **Server state via TanStack Query.** Never use `useState` to cache API responses.
+- **Global client state via Zustand** (`src/store/`). No React Context or Redux.
 - **Streaming buffer uses `useRef`.** Token accumulation does not trigger per-token re-renders.
 - **Forms use React Hook Form + Zod.** No uncontrolled inputs.
 
@@ -141,12 +142,16 @@ smc-fullstack-eng-takehome/
 ├── frontend/
 │   ├── CLAUDE.md              ← Frontend-scoped rules
 │   └── src/
-│       ├── app/
+│       ├── assets/
+│       ├── components/        ← common/ (reusable UI) + layout/
 │       ├── features/
 │       │   ├── auth/
 │       │   ├── chat/
 │       │   └── conversations/
-│       └── shared/
+│       ├── pages/            ← route-level pages
+│       ├── services/         ← API layer (axios, *Service)
+│       ├── store/            ← Zustand stores
+│       └── utils/
 ├── deploy/                    ← k3s / Kubernetes manifests
 │   ├── README.md              ← How to deploy
 │   ├── namespace.yaml
@@ -179,7 +184,7 @@ smc-fullstack-eng-takehome/
 | ---------------- | ---------------------------- | -------------------------------------- |
 | NestJS files     | `kebab-case.type.ts`         | `chat.service.ts`, `jwt-auth.guard.ts` |
 | React components | `PascalCase.tsx`             | `SqlToolBlock.tsx`                     |
-| React hooks      | `camelCase.ts`, `use` prefix | `useStream.ts`                         |
+| React hooks      | `camelCase.ts`, `use` prefix | `useChat.ts`                           |
 | TypeScript types | `PascalCase`                 | `MessageDto`, `StreamState`            |
 | Constants        | `UPPER_SNAKE_CASE`           | `SYSTEM_PROMPT`, `EXECUTE_SQL_TOOL`    |
 | DB tables        | `snake_case`, plural         | `users`, `financial_data`              |

@@ -41,75 +41,90 @@ npm run lint
 
 ---
 
-## Feature Folder Structure
+## Folder Structure
+
+Layout follows `boiler-plate.md`: shared UI in `components/`, route pages in
+`pages/`, the API layer in `services/`, global client state in `store/`
+(Zustand), and helpers in `utils/`. `features/` holds only feature-specific
+components, hooks, and types.
 
 ```
 src/
-├── app/
-│   ├── App.tsx             # Router outlet only
-│   ├── router.tsx          # Route definitions + AuthGuard wiring
-│   └── providers.tsx       # QueryClientProvider, AuthContext, Toaster
+├── assets/                  # Images, fonts, static assets
+├── components/
+│   ├── common/              # Reusable primitives: button, input, label, ErrorToast
+│   └── layout/              # Layout shells: AppLayout, AuthCard
 ├── features/
-│   ├── auth/               # Login, Register, AuthContext, AuthGuard
-│   │   ├── api/auth.api.ts
-│   │   ├── components/
-│   │   │   ├── LoginPage.tsx
-│   │   │   └── RegisterPage.tsx
-│   │   ├── AuthContext.tsx
-│   │   ├── AuthGuard.tsx
+│   ├── auth/                # AuthGuard.tsx, types.ts
+│   ├── chat/                # Streaming UI + useChat
+│   │   ├── components/      # ChatInput, MessageList, MessageBubble, SqlToolBlock,
+│   │   │                    #   StreamingIndicator, MarkdownRenderer, DataTable,
+│   │   │                    #   DataChart, EmptyConversationState, UsageLimitBanner,
+│   │   │                    #   MessageSkeleton
+│   │   ├── hooks/useChat.ts
 │   │   └── types.ts
-│   ├── chat/               # Chat page, streaming, SQL block, charts
-│   │   ├── api/chat.api.ts
-│   │   ├── components/
-│   │   │   ├── ChatPage.tsx
-│   │   │   ├── ChatInput.tsx
-│   │   │   ├── MessageList.tsx
-│   │   │   ├── MessageBubble.tsx
-│   │   │   ├── SqlToolBlock.tsx
-│   │   │   ├── StreamingIndicator.tsx
-│   │   │   ├── MarkdownRenderer.tsx
-│   │   │   ├── DataTable.tsx
-│   │   │   ├── DataChart.tsx
-│   │   │   ├── EmptyConversationState.tsx
-│   │   │   └── UsageLimitBanner.tsx
-│   │   ├── hooks/
-│   │   │   ├── useChat.ts
-│   │   │   └── useStream.ts
-│   │   └── types.ts
-│   └── conversations/      # Sidebar, list, delete dialog
-│       ├── api/conversations.api.ts
-│       ├── components/
-│       │   ├── ConversationSidebar.tsx
-│       │   ├── ConversationItem.tsx
-│       │   └── DeleteConfirmationDialog.tsx
-│       ├── hooks/
-│       │   ├── useConversations.ts
-│       │   └── useConversation.ts
+│   └── conversations/       # Sidebar, list, delete dialog
+│       ├── components/      # ConversationSidebar, ConversationItem,
+│       │                    #   ConversationSkeleton, DeleteConfirmationDialog
+│       ├── hooks/           # useConversations.ts, useConversation.ts
 │       └── types.ts
-└── shared/
-    ├── components/          # AppLayout, ErrorToast, skeletons, Spinner
-    ├── hooks/               # useLocalStorage, etc.
-    ├── lib/
-    │   ├── axios.ts         # Axios instance with JWT interceptor
-    │   └── queryClient.ts   # TanStack QueryClient
-    └── types/index.ts       # Global shared types
+├── pages/                   # Route-level pages: LoginPage, RegisterPage, ChatPage
+├── services/                # API layer
+│   ├── api.ts               # Axios instance with JWT interceptor (+ API_ORIGIN)
+│   ├── queryClient.ts       # TanStack QueryClient
+│   ├── authService.ts       # /auth endpoints
+│   ├── conversationsService.ts
+│   └── chatService.ts       # SSE stream + /chat/stop
+├── store/
+│   └── authStore.ts         # Zustand auth store (useAuthStore)
+├── utils/
+│   ├── cn.ts                # Tailwind class merge
+│   ├── token.ts             # JWT get/set/clear (memory + localStorage)
+│   └── theme.ts             # System colour-scheme sync
+├── App.tsx                  # Root component: providers + router
+└── main.tsx                 # Entry point (applies theme, kicks off auth initialize)
 ```
 
 ---
 
 ## Key Patterns
 
+### Global State — Zustand (NOT Context/Redux)
+
+```typescript
+// store/authStore.ts — global client state lives in a Zustand store
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  isAuthenticated: false,
+  login: async (credentials) => {
+    const { accessToken, user } = await authService.login(credentials)
+    setToken(accessToken)
+    set({ user, isAuthenticated: true })
+  },
+  logout: () => {
+    clearToken()
+    set({ user: null, isAuthenticated: false })
+  },
+}))
+
+// Consume via selectors — never destructure the whole store
+const login = useAuthStore((s) => s.login)
+const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+```
+
+`initialize()` (persisted-token check) runs once from `main.tsx`, not a provider.
+
 ### Auth — JWT Interceptor
 
 ```typescript
-// shared/lib/axios.ts
-axiosInstance.interceptors.request.use((config) => {
-  const token = getToken() // from AuthContext / localStorage
+// services/api.ts
+api.interceptors.request.use((config) => {
+  const token = getToken() // from utils/token (memory + localStorage)
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-axiosInstance.interceptors.response.use(
+api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) redirectToLogin()
@@ -124,7 +139,7 @@ axiosInstance.interceptors.response.use(
 // Always useQuery for server data — never useState
 const { data, isLoading, isError } = useQuery({
   queryKey: ['conversation', id],
-  queryFn: () => conversationsApi.getConversation(id),
+  queryFn: () => conversationsService.get(id),
 });
 
 // Always handle loading + error
@@ -135,8 +150,8 @@ if (isError) return <ErrorState />;
 ### Streaming — ReadableStream (NOT EventSource)
 
 ```typescript
-// useStream.ts — must use fetch(), not EventSource
-// EventSource cannot send Authorization header
+// services/chatService.ts (driven by features/chat/hooks/useChat.ts)
+// Must use fetch(), not EventSource — EventSource cannot send Authorization header
 const res = await fetch("/chat", {
   method: "POST",
   headers: {
@@ -240,7 +255,7 @@ After first message in a new chat, update URL with `history.replaceState` (no na
 ## Component Rules
 
 - **One component per file** — no two exports from the same file
-- **No prop drilling beyond 2 levels** — use Context or query hooks
+- **No prop drilling beyond 2 levels** — use the Zustand store or query hooks
 - **Stable list keys** — always use `item.id`, never array index
 - **Loading + error always handled** in every `useQuery` render
 - **Auto-scroll** to bottom in MessageList; suspend when user scrolls up
@@ -282,6 +297,7 @@ The AI includes a fenced code block to signal chart rendering:
 ## What NOT to Do
 
 - No `EventSource` for the `/chat` stream (cannot send `Authorization` header)
+- No React Context or Redux for global state — use a Zustand store in `store/`
 - No `useState` to cache server data — use TanStack Query
 - No `useState` for streaming token accumulation — use `useRef`
 - No array index as list `key`
