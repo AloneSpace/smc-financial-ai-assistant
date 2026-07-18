@@ -1,14 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ErrorToast } from '@/shared/components/ErrorToast';
+import { ErrorToast } from '@/components/common/ErrorToast';
 import { useConversation } from '@/features/conversations/hooks/useConversation';
 import { useCreateConversation } from '@/features/conversations/hooks/useConversations';
-import { useChat } from '../hooks/useChat';
-import { ChatInput } from './ChatInput';
-import { MessageList } from './MessageList';
-import { MessageSkeleton } from './MessageSkeleton';
-import { EmptyConversationState } from './EmptyConversationState';
-import { UsageLimitBanner } from './UsageLimitBanner';
+import { useChat } from '@/features/chat/hooks/useChat';
+import { ChatInput } from '@/features/chat/components/ChatInput';
+import { MessageList } from '@/features/chat/components/MessageList';
+import { MessageSkeleton } from '@/features/chat/components/MessageSkeleton';
+import { EmptyConversationState } from '@/features/chat/components/EmptyConversationState';
+import { UsageLimitBanner } from '@/features/chat/components/UsageLimitBanner';
 
 interface LocationState {
   initialMessage?: string;

@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/utils/cn';
 import type { ConversationSummary } from '../types';
 
 interface ConversationItemProps {

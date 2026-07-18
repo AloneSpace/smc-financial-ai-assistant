@@ -1,5 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { clearToken, getToken } from './token';
+import { clearToken, getToken } from '@/utils/token';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 

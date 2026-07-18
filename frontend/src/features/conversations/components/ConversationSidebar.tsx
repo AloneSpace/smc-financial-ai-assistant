@@ -1,8 +1,8 @@
 import { LogOut, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@/features/auth/AuthContext';
-import { Button } from '@/shared/components/ui/button';
+import { useAuthStore } from '@/store/authStore';
+import { Button } from '@/components/common/button';
 import {
   useConversations,
   useCreateConversation,
@@ -16,7 +16,8 @@ import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 export function ConversationSidebar() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   const { data, isLoading, isError } = useConversations();
   const createConversation = useCreateConversation();

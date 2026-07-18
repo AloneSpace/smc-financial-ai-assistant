@@ -1,4 +1,4 @@
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/utils/cn';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { StreamingIndicator } from './StreamingIndicator';
 

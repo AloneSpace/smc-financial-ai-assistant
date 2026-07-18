@@ -1,54 +1,60 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import axios from 'axios';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
-import { useAuth } from '../AuthContext';
-import { AuthCard } from './AuthCard';
+import { Button } from '@/components/common/button';
+import { Input } from '@/components/common/input';
+import { Label } from '@/components/common/label';
+import { AuthCard } from '@/components/layout/AuthCard';
+import { useAuthStore } from '@/store/authStore';
 
-const loginSchema = z.object({
+const registerSchema = z.object({
   email: z.string().email('Enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-type LoginForm = z.infer<typeof loginSchema>;
+type RegisterForm = z.infer<typeof registerSchema>;
 
-export function LoginPage() {
-  const { login, isAuthenticated } = useAuth();
+export function RegisterPage() {
+  const registerAccount = useAuthStore((s) => s.register);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
+  } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
 
   if (isAuthenticated) {
     return <Navigate to="/chat" replace />;
   }
 
-  const onSubmit = async (values: LoginForm) => {
+  const onSubmit = async (values: RegisterForm) => {
     setFormError(null);
     try {
-      await login(values);
+      await registerAccount(values);
       navigate('/chat', { replace: true });
-    } catch {
-      setFormError('Invalid email or password');
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        setFormError('An account with this email already exists');
+      } else {
+        setFormError('Something went wrong. Please try again.');
+      }
     }
   };
 
   return (
     <AuthCard
-      title="Welcome back"
-      subtitle="Sign in to your FinChat account"
+      title="Create your account"
+      subtitle="Start asking questions about company financials"
       footer={
         <>
-          Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-medium text-primary hover:underline">
-            Create one
+          Already have an account?{' '}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            Sign in
           </Link>
         </>
       }
@@ -67,7 +73,7 @@ export function LoginPage() {
           <Input
             id="password"
             type="password"
-            autoComplete="current-password"
+            autoComplete="new-password"
             {...register('password')}
           />
           {errors.password && (
@@ -82,7 +88,7 @@ export function LoginPage() {
         )}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
+          {isSubmitting ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
     </AuthCard>

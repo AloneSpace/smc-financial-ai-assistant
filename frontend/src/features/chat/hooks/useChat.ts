@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { conversationKeys } from '@/features/conversations/hooks/useConversations';
-import { chatApi } from '../api/chat.api';
+import { chatService } from '@/services/chatService';
 import type { ChatStreamEvent, StreamState, ToolBlockState } from '../types';
 
 export interface UsageLimit {
@@ -150,7 +150,7 @@ export function useChat(conversationId: string | undefined): UseChatResult {
 
       const controller = new AbortController();
       abortRef.current = controller;
-      void chatApi.streamChat(
+      void chatService.streamChat(
         { conversationId, message },
         controller.signal,
         {
@@ -175,7 +175,7 @@ export function useChat(conversationId: string | undefined): UseChatResult {
   const stop = useCallback(() => {
     const messageId = messageIdRef.current;
     if (!conversationId || !messageId) return;
-    void chatApi.stop(conversationId, messageId).catch(() => {
+    void chatService.stop(conversationId, messageId).catch(() => {
       // The stream still finalises via its `done` event; ignore stop errors.
     });
   }, [conversationId]);

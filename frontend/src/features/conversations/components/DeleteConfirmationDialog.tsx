@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Button } from '@/shared/components/ui/button';
+import { Button } from '@/components/common/button';
 
 interface DeleteConfirmationDialogProps {
   open: boolean;

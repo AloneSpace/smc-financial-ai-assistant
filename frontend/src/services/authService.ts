@@ -1,7 +1,7 @@
-import { api } from '@/shared/lib/axios';
-import type { AuthResponse, Credentials, User } from '../types';
+import { api } from '@/services/api';
+import type { AuthResponse, Credentials, User } from '@/features/auth/types';
 
-export const authApi = {
+export const authService = {
   async register(credentials: Credentials): Promise<AuthResponse> {
     const res = await api.post<AuthResponse>('/auth/register', credentials);
     return res.data;

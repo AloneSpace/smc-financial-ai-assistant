@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { conversationsApi } from '../api/conversations.api';
+import { conversationsService } from '@/services/conversationsService';
 import { conversationKeys } from './useConversations';
 import type { ConversationWithMessages } from '../types';
 
@@ -7,7 +7,7 @@ import type { ConversationWithMessages } from '../types';
 export function useConversation(id: string | undefined) {
   return useQuery<ConversationWithMessages>({
     queryKey: conversationKeys.detail(id ?? 'none'),
-    queryFn: () => conversationsApi.get(id as string),
+    queryFn: () => conversationsService.get(id as string),
     enabled: Boolean(id),
   });
 }

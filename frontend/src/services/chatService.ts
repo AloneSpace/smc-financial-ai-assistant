@@ -1,6 +1,6 @@
-import { api, API_ORIGIN } from '@/shared/lib/axios';
-import { clearToken, getToken } from '@/shared/lib/token';
-import type { ChatStreamEvent } from '../types';
+import { api, API_ORIGIN } from '@/services/api';
+import { clearToken, getToken } from '@/utils/token';
+import type { ChatStreamEvent } from '@/features/chat/types';
 
 export interface StreamHandlers {
   onEvent: (event: ChatStreamEvent) => void;
@@ -129,7 +129,7 @@ async function readErrorMessage(res: Response): Promise<string> {
   return 'Something went wrong. Please try again.';
 }
 
-export const chatApi = {
+export const chatService = {
   streamChat,
   async stop(conversationId: string, messageId: string): Promise<StopResponse> {
     const res = await api.post<StopResponse>('/chat/stop', {

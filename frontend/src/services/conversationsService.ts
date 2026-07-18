@@ -1,16 +1,16 @@
-import { api } from '@/shared/lib/axios';
+import { api } from '@/services/api';
 import type {
   ConversationSummary,
   ConversationWithMessages,
   PaginatedConversations,
-} from '../types';
+} from '@/features/conversations/types';
 
 interface ListParams {
   limit?: number;
   offset?: number;
 }
 
-export const conversationsApi = {
+export const conversationsService = {
   async list(params: ListParams = {}): Promise<PaginatedConversations> {
     const res = await api.get<PaginatedConversations>('/conversations', { params });
     return res.data;
