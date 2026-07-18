@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/jwt.types';
@@ -22,12 +23,17 @@ import {
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { ListConversationsDto } from './dto/list-conversations.dto';
 
+@ApiTags('conversations')
+@ApiBearerAuth('bearer')
 @Controller('conversations')
 @UseGuards(JwtAuthGuard)
 export class ConversationsController {
   constructor(private readonly conversationsService: ConversationsService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Create a conversation' })
+  @ApiResponse({ status: 201, description: 'Conversation created.', type: ConversationSummaryDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid JWT.' })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateConversationDto,
@@ -36,6 +42,9 @@ export class ConversationsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List the current user’s conversations (paginated)' })
+  @ApiResponse({ status: 200, description: 'Paginated conversation list.', type: PaginatedConversationsDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid JWT.' })
   findAll(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ListConversationsDto,
@@ -44,6 +53,10 @@ export class ConversationsController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get a single conversation with its messages' })
+  @ApiResponse({ status: 200, description: 'Conversation with messages.', type: ConversationWithMessagesDto })
+  @ApiResponse({ status: 403, description: 'Conversation belongs to another user.' })
+  @ApiResponse({ status: 404, description: 'Conversation not found.' })
   findOne(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -53,6 +66,10 @@ export class ConversationsController {
 
   @Delete(':id')
   @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a conversation (cascades to messages)' })
+  @ApiResponse({ status: 204, description: 'Conversation deleted.' })
+  @ApiResponse({ status: 403, description: 'Conversation belongs to another user.' })
+  @ApiResponse({ status: 404, description: 'Conversation not found.' })
   remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,

@@ -5,11 +5,14 @@ metadata:
   namespace: finchat
 data:
   # Non-secret runtime configuration. Secrets live in the Secret (see
-  # secret.example.yaml). NOTE: AI provider is Anthropic Claude Opus.
+  # secret.example.yaml). AI provider is selected by AI_PROVIDER (openai
+  # or anthropic); both vendors are supported behind one interface.
   NODE_ENV: "production"
   PORT: "3000"
+  AI_PROVIDER: "openai"
+  AI_MAX_HISTORY_MESSAGES: "20"
+  OPENAI_MODEL: "gpt-4o"
   ANTHROPIC_MODEL: "claude-opus-4-8"
-  ANTHROPIC_MAX_HISTORY_MESSAGES: "20"
   USAGE_BUDGET_USD: "1.0"
   USAGE_RESET_INTERVAL_SECONDS: "3600"
   JWT_EXPIRY: "24h"

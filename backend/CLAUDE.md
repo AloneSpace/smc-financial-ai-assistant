@@ -56,7 +56,7 @@ src/
 ├── config/
 │   ├── database.config.ts     # TypeORM config from env
 │   ├── redis.config.ts        # Redis config from env
-│   └── anthropic.config.ts    # Anthropic Claude config from env
+│   └── ai.config.ts           # AI provider config (openai | anthropic)
 └── modules/
     ├── auth/                  # Register, login, JWT
     ├── chat/                  # AI orchestration, SSE streaming
@@ -152,7 +152,7 @@ All `conversations` and `messages` queries **must** include `WHERE user_id = :us
 | Duplicate (e.g. email)         | `ConflictException`                              |
 | Bad input beyond DTO           | `BadRequestException`                            |
 | Unauthenticated                | `UnauthorizedException`                          |
-| Anthropic API unavailable      | `ServiceUnavailableException`                    |
+| AI provider API unavailable    | `ServiceUnavailableException`                    |
 | Over usage limit               | `HttpException(429)` with `{ message, resetIn }` |
 
 Never throw raw `Error`. Never let exceptions bubble with stack traces to the client.

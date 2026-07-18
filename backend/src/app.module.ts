@@ -5,11 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
-import anthropicConfig from './config/anthropic.config';
+import aiConfig from './config/ai.config';
 import { RedisModule } from './modules/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
       isGlobal: true,
       // Local dev reads the repo-root .env; Docker injects env directly.
       envFilePath: ['../.env', '.env'],
-      load: [appConfig, databaseConfig, redisConfig, anthropicConfig],
+      load: [appConfig, databaseConfig, redisConfig, aiConfig],
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -37,6 +38,7 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
     HealthModule,
     AuthModule,
     ConversationsModule,
+    ChatModule,
   ],
 })
 export class AppModule {}
