@@ -1,0 +1,423 @@
+# Financial AI Chat Assistant
+
+A full-stack AI-powered chat application that lets authenticated users ask natural-language questions about the financial performance of US public companies. Every answer is grounded exclusively in a PostgreSQL database via OpenAI Tool Calling — no hallucination permitted.
+
+---
+
+## Features
+
+- **SQL-Grounded AI** — Every financial figure comes from the database. The AI executes `SELECT` queries and cannot fabricate numbers.
+- **Visible Tool Execution** — SQL queries are rendered in the chat UI as they execute, in real time.
+- **Token-by-Token Streaming** — Responses stream from the backend using Server-Sent Events (SSE).
+- **Stop Generation** — Users can halt a response mid-stream. Partial content is preserved.
+- **Rich Rendering** — Markdown, formatted tables, and bar/line charts for trend and comparison queries.
+- **Conversation History** — Full per-user conversation history with create, browse, and delete support.
+- **Usage Limits** — Per-user hourly spending cap tracked in Redis with automatic TTL-based reset.
+- **Authentication** — Email/password registration and login with JWT session management.
+
+---
+
+## Tech Stack
+
+| Layer              | Technology                                                 |
+| ------------------ | ---------------------------------------------------------- |
+| **Frontend**       | React 18, TypeScript 5, Vite, shadcn/ui, TailwindCSS       |
+| **State**          | TanStack Query v5, React Hook Form, Zod                    |
+| **Charts**         | Recharts                                                   |
+| **Backend**        | NestJS 10, TypeScript 5                                    |
+| **ORM**            | TypeORM                                                    |
+| **Database**       | PostgreSQL 16                                              |
+| **Cache**          | Redis 7                                                    |
+| **AI**             | OpenAI API — GPT-4o, Tool Calling, Streaming               |
+| **Auth**           | JWT (HS256), Argon2id (`@node-rs/argon2`)                  |
+| **Infrastructure** | Docker Compose (local dev) · k3s / Kubernetes (deployment) |
+
+---
+
+## Dataset
+
+The application answers questions about **49 US public companies** across **5 sectors** for fiscal years **2022–2025**.
+
+| Sector     | Companies                                                                                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Technology | Apple, Microsoft, Google, Nvidia, Meta, Amazon, Tesla, Intel, AMD, Adobe, Oracle, Salesforce, Netflix, Uber, Shopify                                        |
+| Finance    | JPMorgan, Visa, Mastercard, Goldman, Morgan Stanley, BankOfAmerica, WellsFargo, Citigroup, AmericanExpress, PayPal, BlackRock, Schwab, CapitalOne, PNC, USB |
+| Healthcare | UnitedHealth, Eli Lilly, JohnsonJohnson, AbbVie, Pfizer, Merck, Bristol-Myers, Amgen                                                                        |
+| Consumer   | Walmart, Amazon, Costco, HomeDepot, PepsiCo, Coca-Cola, McDonald's, Nike, Target, Starbucks                                                                 |
+| Energy     | ExxonMobil, Chevron                                                                                                                                         |
+
+Metrics available: **revenue**, **net_income**, **operating_income**, **gross_profit** (some NULL by design — see `docs/05_DATABASE.md`).
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Browser (React SPA)                    │
+│   Auth  │  Chat + Streaming  │  Conversation Sidebar    │
+└──────────────────────────┬──────────────────────────────┘
+                           │ HTTPS
+          ┌────────────────▼─────────────────────────────────────────┐
+          │              k3s Cluster  —  namespace: finchat           │
+          │                                                           │
+          │  [ Traefik IngressRoute ]                                 │
+          │     /     → frontend-svc (Nginx pod)                      │
+          │     /api  → backend-svc  (NestJS pod)                     │
+          │                    │                                      │
+          │    ┌───────────────▼─────────────────────────┐           │
+          │    │           NestJS Backend Pod             │           │
+          │    │  JwtAuthGuard → UsageGuard → ChatService │           │
+          │    │       ↓                        ↓         │           │
+          │    │  OpenAIService          SqlToolService   │           │
+          │    └──────┬─────────────────────┬─────────────┘           │
+          │     HTTPS │              :5432   │   :6379                │
+          │           │      ┌───────▼───────▼──────────┐            │
+          │        OpenAI    │   Postgres (StatefulSet)  │  Redis     │
+          │         API      │   + PVC                   │  Deployment│
+          │                  └───────────────────────────┘  + PVC    │
+          └──────────────────────────────────────────────────────────┘
+```
+
+**Local development** uses `docker compose up` for convenience.  
+**Deployment** targets a k3s cluster via the manifests in [`deploy/`](deploy/).
+
+### AI Flow
+
+```
+User question
+  → NestJS receives POST /chat
+  → JwtAuthGuard validates token
+  → UsageGuard checks Redis spend < budget
+  → ChatService builds [system_prompt, ...history, user_message]
+  → OpenAI (stream=true, tools=[execute_sql])
+  → OpenAI calls execute_sql(query)  ← SSE: tool_start, tool_query
+  → SqlToolService validates + executes SQL on PostgreSQL
+  → Result returned to OpenAI         ← SSE: tool_end (row count)
+  → OpenAI generates final answer
+  → Answer streamed token by token    ← SSE: token × N
+  → done event sent                   ← SSE: done (usage)
+  → Messages saved to DB, Redis usage updated
+```
+
+---
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) (local dev)
+- [k3s](https://k3s.io/) or any Kubernetes cluster (deployment)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured against your cluster
+- [Node.js](https://nodejs.org/) 20+ (for local development without Docker)
+- An [OpenAI API key](https://platform.openai.com/api-keys)
+
+---
+
+## Quick Start (Docker)
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url>
+cd smc-fullstack-eng-takehome
+```
+
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and fill in the required values:
+
+```env
+OPENAI_API_KEY=sk-...          # Required — your OpenAI API key
+JWT_SECRET=<random-32-chars>   # Required — generate with: openssl rand -hex 32
+```
+
+All other values have working defaults for local development.
+
+### 3. Start all services
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+- PostgreSQL on port `5432`
+- Redis on port `6379`
+- NestJS backend on port `3000`
+- React frontend on port `5173`
+
+### 4. Import the financial data
+
+In a separate terminal, after the services are healthy:
+
+```bash
+docker compose exec postgres psql -U postgres -d finchat -f /docker-entrypoint-initdb.d/financial_data.sql
+```
+
+Or using the host machine:
+
+```bash
+docker exec -i $(docker compose ps -q postgres) \
+  psql -U postgres finchat < data/financial_data.sql
+```
+
+### 5. Open the application
+
+Navigate to **[http://localhost:5173](http://localhost:5173)**, register an account, and start chatting.
+
+---
+
+## Environment Variables
+
+All variables are documented in `.env.example`. Never commit `.env`.
+
+| Variable                       | Required | Default                 | Description                              |
+| ------------------------------ | -------- | ----------------------- | ---------------------------------------- |
+| `DATABASE_URL`                 | ✅       | —                       | PostgreSQL connection string             |
+| `REDIS_URL`                    | ✅       | —                       | Redis connection string                  |
+| `JWT_SECRET`                   | ✅       | —                       | JWT signing secret, min 32 characters    |
+| `JWT_EXPIRY`                   | ❌       | `24h`                   | JWT token expiry duration                |
+| `OPENAI_API_KEY`               | ✅       | —                       | OpenAI API key                           |
+| `OPENAI_MODEL`                 | ❌       | `gpt-4o`                | OpenAI model to use                      |
+| `OPENAI_MAX_HISTORY_MESSAGES`  | ❌       | `20`                    | Max conversation messages sent to OpenAI |
+| `USAGE_BUDGET_USD`             | ❌       | `1.0`                   | Per-user hourly spending limit in USD    |
+| `USAGE_RESET_INTERVAL_SECONDS` | ❌       | `3600`                  | How often the usage budget resets        |
+| `FRONTEND_URL`                 | ❌       | `http://localhost:5173` | Frontend origin for CORS                 |
+
+---
+
+## Deploy to k3s
+
+Full manifest reference: [`deploy/README.md`](deploy/README.md)
+
+### Prerequisites
+
+- k3s installed and `kubectl` configured (`k3s` single-node or any compatible cluster)
+- Docker images built and accessible (push to a registry or import directly)
+
+### 1. Apply manifests
+
+```bash
+# Create namespace first
+kubectl apply -f deploy/namespace.yaml
+
+# Create the real Secret (never commit this file)
+kubectl create secret generic finchat-secrets \
+  --namespace finchat \
+  --from-literal=DATABASE_URL="postgresql://postgres:<password>@postgres-svc:5432/finchat" \
+  --from-literal=REDIS_URL="redis://redis-svc:6379" \
+  --from-literal=JWT_SECRET="<min-32-char-secret>" \
+  --from-literal=OPENAI_API_KEY="sk-..."
+
+# Apply everything else
+kubectl apply -f deploy/configmap.yaml
+kubectl apply -f deploy/postgres/
+kubectl apply -f deploy/redis/
+kubectl apply -f deploy/backend/
+kubectl apply -f deploy/frontend/
+kubectl apply -f deploy/ingress.yaml
+```
+
+### 2. Import financial data
+
+```bash
+# Wait for the postgres pod to be Ready
+kubectl wait --for=condition=Ready pod -l app=postgres -n finchat --timeout=60s
+
+# Copy and import the SQL dump
+kubectl cp data/financial_data.sql finchat/$(kubectl get pod -l app=postgres -n finchat -o jsonpath='{.items[0].metadata.name}'):/tmp/financial_data.sql
+kubectl exec -n finchat deploy/postgres -- psql -U postgres finchat -f /tmp/financial_data.sql
+```
+
+### 3. Verify
+
+```bash
+kubectl get pods -n finchat          # All pods should be Running
+kubectl get pvc  -n finchat          # PVCs should be Bound
+kubectl get ingress -n finchat       # Traefik route visible
+curl https://<k3s-host>/api/health   # → { "status": "ok" }
+```
+
+> **SSE streaming note:** Traefik supports server-sent events natively with no extra configuration. The backend must include the `X-Accel-Buffering: no` header on the `/chat` response.
+
+---
+
+## Local Development (without Docker)
+
+### Backend
+
+```bash
+cd backend
+npm install
+npm run start:dev        # http://localhost:3000
+```
+
+Requires a running PostgreSQL and Redis instance. Update `DATABASE_URL` and `REDIS_URL` in `.env` accordingly.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev              # http://localhost:5173
+```
+
+### Run Tests
+
+```bash
+# Backend unit tests
+cd backend && npm test
+
+# Backend test coverage
+cd backend && npm run test:cov
+
+# Frontend unit tests
+cd frontend && npm test
+
+# E2E tests (requires Docker Compose running)
+npx playwright test
+
+# Run only baseline scenarios
+npx playwright test --grep "S[1-6]"
+```
+
+---
+
+## Folder Structure
+
+```
+smc-fullstack-eng-takehome/
+├── CLAUDE.md                  # AI agent — global rules
+├── README.md                  # This file
+├── compose.yml                # Docker Compose
+├── .env.example               # Environment variable template
+│
+├── backend/                   # NestJS API
+│   ├── CLAUDE.md              # AI agent — backend rules
+│   └── src/
+│       ├── main.ts
+│       ├── app.module.ts
+│       ├── config/            # Database, Redis, OpenAI config factories
+│       └── modules/
+│           ├── auth/          # Register, login, JWT, guards
+│           ├── chat/          # AI orchestration, SSE streaming, SQL tool
+│           ├── conversations/ # Conversation CRUD
+│           ├── usage/         # Redis spend tracking, UsageGuard
+│           └── database/      # TypeORM entities + migrations
+│
+├── frontend/                  # React SPA
+│   ├── CLAUDE.md              # AI agent — frontend rules
+│   └── src/
+│       ├── app/               # Router, providers
+│       ├── features/
+│       │   ├── auth/          # Login, register, AuthContext, AuthGuard
+│       │   ├── chat/          # Chat page, streaming, SQL block, charts
+│       │   └── conversations/ # Sidebar, delete dialog
+│       └── shared/            # Axios instance, QueryClient, shared components
+│
+├── data/
+│   └── financial_data.sql     # Financial dataset (192 rows)
+│
+└── docs/
+    ├── REQUIREMENT.md         # Source of truth
+    ├── 02_PRD.md
+    ├── 03_ARCHITECTURE.md
+    ├── 04_SYSTEM_DESIGN.md
+    ├── 05_DATABASE.md
+    ├── 06_API_SPEC.md
+    ├── 07_UI_FLOW.md
+    ├── 08_IMPLEMENTATION_PLAN.md
+    ├── 09_TASKS.md
+    ├── 10_AI_RULES.md
+    └── 11_TEST_PLAN.md
+```
+
+---
+
+## API Reference
+
+| Method   | Path                 | Auth | Description                            |
+| -------- | -------------------- | ---- | -------------------------------------- |
+| `POST`   | `/auth/register`     | ❌   | Register new user, returns JWT         |
+| `POST`   | `/auth/login`        | ❌   | Login, returns JWT                     |
+| `GET`    | `/auth/me`           | ✅   | Current user profile                   |
+| `POST`   | `/conversations`     | ✅   | Create conversation                    |
+| `GET`    | `/conversations`     | ✅   | Paginated conversation list            |
+| `GET`    | `/conversations/:id` | ✅   | Conversation with full message history |
+| `DELETE` | `/conversations/:id` | ✅   | Delete conversation + messages         |
+| `POST`   | `/chat`              | ✅   | Send message, stream SSE response      |
+| `POST`   | `/chat/stop`         | ✅   | Abort active stream, save partial      |
+
+Full specification: [`docs/06_API_SPEC.md`](docs/06_API_SPEC.md)
+
+---
+
+## Baseline Scenarios
+
+The application must pass all six scenarios defined in `docs/01_REQUIREMENT.md`:
+
+| ID     | Scenario                                                    | How to test                                   |
+| ------ | ----------------------------------------------------------- | --------------------------------------------- |
+| **S1** | Valid financial question → streamed answer with SQL visible | Ask: _"What was Apple's net income in 2023?"_ |
+| **S2** | Out-of-coverage data → "not available", no fabrication      | Ask: _"What was Apple's revenue in 2021?"_    |
+| **S3** | Stop generation → stream halts, partial content saved       | Click Stop during any streaming response      |
+| **S4** | Usage limit exceeded → friendly message, input disabled     | Exhaust hourly budget via multiple requests   |
+| **S5** | Browser refresh → conversation restored, no duplicates      | Send messages, then hard-refresh the page     |
+| **S6** | Delete conversation → confirmation dialog, permanently gone | Click delete icon on any conversation         |
+
+---
+
+## Documentation
+
+All planning and architecture documents are in [`docs/`](docs/):
+
+| Document                                                      | Description                                   |
+| ------------------------------------------------------------- | --------------------------------------------- |
+| [`REQUIREMENT.md`](docs/01_REQUIREMENT.md)                    | Source of truth — read before any task        |
+| [`02_PRD.md`](docs/02_PRD.md)                                 | Product requirements and success metrics      |
+| [`03_ARCHITECTURE.md`](docs/03_ARCHITECTURE.md)               | Technology decisions and rationale            |
+| [`04_SYSTEM_DESIGN.md`](docs/04_SYSTEM_DESIGN.md)             | Mermaid diagrams — all system flows           |
+| [`05_DATABASE.md`](docs/05_DATABASE.md)                       | Schema, NULL analysis, example queries        |
+| [`06_API_SPEC.md`](docs/06_API_SPEC.md)                       | REST API contract                             |
+| [`07_UI_FLOW.md`](docs/07_UI_FLOW.md)                         | Screen layouts, component inventory           |
+| [`08_IMPLEMENTATION_PLAN.md`](docs/08_IMPLEMENTATION_PLAN.md) | Phase-by-phase build plan                     |
+| [`09_TASKS.md`](docs/09_TASKS.md)                             | Full task checklist                           |
+| [`10_AI_RULES.md`](docs/10_AI_RULES.md)                       | Engineering rules for AI coding agents        |
+| [`11_TEST_PLAN.md`](docs/11_TEST_PLAN.md)                     | Unit, integration, E2E, and manual test plans |
+
+---
+
+## Health Check
+
+```bash
+curl http://localhost:3000/health
+# → { "status": "ok", "timestamp": "2026-07-15T..." }
+```
+
+---
+
+## Future Improvements
+
+The following are intentionally out of scope for this assignment but represent natural next steps:
+
+| Improvement               | Notes                                                                     |
+| ------------------------- | ------------------------------------------------------------------------- |
+| **Expand dataset**        | Add balance sheet, cash flow, and per-quarter data                        |
+| **Real-time data**        | Integrate a market data API for live prices                               |
+| **Semantic caching**      | Cache semantically similar queries in Redis to reduce OpenAI costs        |
+| **Conversation search**   | Full-text search across message history                                   |
+| **Export**                | Download conversation as PDF or CSV                                       |
+| **User settings**         | Custom usage budget, preferred chart type                                 |
+| **Mobile layout**         | Responsive design for smaller viewports                                   |
+| **Multi-turn tool calls** | Support queries that require more than one SQL call                       |
+| **Rate limiting**         | Per-IP and per-user request rate limiting via Redis                       |
+| **Horizontal scaling**    | Move active stream map from in-memory to Redis for multi-instance support |
+
+---
+
+## License
+
+This project is submitted as a take-home engineering assignment. Not for production use.

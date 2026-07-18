@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finchat-config
+  namespace: finchat
+data:
+  # Non-secret runtime configuration. Secrets live in the Secret (see
+  # secret.example.yaml). NOTE: AI provider is Anthropic Claude Opus.
+  NODE_ENV: "production"
+  PORT: "3000"
+  ANTHROPIC_MODEL: "claude-opus-4-8"
+  ANTHROPIC_MAX_HISTORY_MESSAGES: "20"
+  USAGE_BUDGET_USD: "1.0"
+  USAGE_RESET_INTERVAL_SECONDS: "3600"
+  JWT_EXPIRY: "24h"
+  FRONTEND_URL: "https://finchat.local"
