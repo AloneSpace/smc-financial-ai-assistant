@@ -1,16 +1,27 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ApiProperty } from '@nestjs/swagger';
 import { InjectDataSource } from '@nestjs/typeorm';
 import Redis from 'ioredis';
 import { DataSource } from 'typeorm';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 
-export interface HealthStatus {
-  status: 'ok' | 'degraded';
-  timestamp: string;
-  services: {
-    postgres: 'up' | 'down';
-    redis: 'up' | 'down';
-  };
+export class HealthServicesStatus {
+  @ApiProperty({ enum: ['up', 'down'] })
+  postgres!: 'up' | 'down';
+
+  @ApiProperty({ enum: ['up', 'down'] })
+  redis!: 'up' | 'down';
+}
+
+export class HealthStatus {
+  @ApiProperty({ enum: ['ok', 'degraded'] })
+  status!: 'ok' | 'degraded';
+
+  @ApiProperty({ format: 'date-time' })
+  timestamp!: string;
+
+  @ApiProperty({ type: HealthServicesStatus })
+  services!: HealthServicesStatus;
 }
 
 @Injectable()

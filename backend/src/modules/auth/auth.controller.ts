@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthResponseDto, UserDto } from './dto/auth-response.dto';
@@ -15,6 +15,8 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Register a new user and return a JWT' })
+  @ApiResponse({ status: 201, description: 'User created; JWT returned.', type: AuthResponseDto })
+  @ApiResponse({ status: 409, description: 'Email already registered.' })
   register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
     return this.authService.register(dto);
   }
@@ -22,6 +24,8 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   @ApiOperation({ summary: 'Log in with email + password and return a JWT' })
+  @ApiResponse({ status: 200, description: 'Credentials valid; JWT returned.', type: AuthResponseDto })
+  @ApiResponse({ status: 401, description: 'Invalid email or password.' })
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
   }
@@ -30,6 +34,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('bearer')
   @ApiOperation({ summary: 'Get the currently authenticated user' })
+  @ApiResponse({ status: 200, description: 'The current user profile.', type: UserDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid JWT.' })
   me(@CurrentUser() user: AuthenticatedUser): Promise<UserDto> {
     return this.authService.getProfile(user.id);
   }
