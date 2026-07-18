@@ -18,6 +18,7 @@ export function ConversationItem({
   return (
     <Link
       to={`/chat/${conversation.id}`}
+      data-testid="conversation-item"
       className={cn(
         'group flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-sm transition-colors',
         isActive

@@ -1,25 +1,107 @@
-import { useParams } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ErrorToast } from '@/shared/components/ErrorToast';
+import { useConversation } from '@/features/conversations/hooks/useConversation';
+import { useCreateConversation } from '@/features/conversations/hooks/useConversations';
+import { useChat } from '../hooks/useChat';
+import { ChatInput } from './ChatInput';
+import { MessageList } from './MessageList';
+import { MessageSkeleton } from './MessageSkeleton';
+import { EmptyConversationState } from './EmptyConversationState';
+import { UsageLimitBanner } from './UsageLimitBanner';
+
+interface LocationState {
+  initialMessage?: string;
+}
 
 /**
- * Main chat area. Phase 3 adds the message list and input; for now it reflects
- * whether a conversation is selected so the sidebar wiring is verifiable.
+ * The chat main pane. Loads a conversation's history, renders the live stream,
+ * and handles the "new chat" flow (create → navigate → auto-send first message).
  */
 export function ChatPage() {
   const { conversationId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const createConversation = useCreateConversation();
+
+  const conversationQuery = useConversation(conversationId);
+  const chat = useChat(conversationId);
+
+  const initialMessage = (location.state as LocationState | null)?.initialMessage;
+  const initialSentRef = useRef<string | null>(null);
+
+  // Auto-send the message that started a brand-new conversation.
+  useEffect(() => {
+    if (
+      conversationId &&
+      initialMessage &&
+      initialSentRef.current !== conversationId
+    ) {
+      initialSentRef.current = conversationId;
+      chat.send(initialMessage);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [conversationId, initialMessage, chat, navigate, location.pathname]);
+
+  const handleSend = async (message: string) => {
+    if (conversationId) {
+      chat.send(message);
+      return;
+    }
+    const conversation = await createConversation.mutateAsync(undefined);
+    navigate(`/chat/${conversation.id}`, { state: { initialMessage: message } });
+  };
+
+  const messages = conversationQuery.data?.messages ?? [];
+  const hasContent =
+    messages.length > 0 ||
+    chat.pendingUserMessage !== null ||
+    chat.isStreaming ||
+    chat.streamState === 'ERROR';
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-      <h1 className="text-xl font-semibold tracking-tight">FinChat</h1>
-      {conversationId ? (
-        <p className="text-sm text-muted-foreground">
-          Conversation <span className="font-mono">{conversationId}</span> — messages
-          arrive in Phase 3.
-        </p>
+    <div className="flex h-full flex-col">
+      {conversationId && conversationQuery.isLoading ? (
+        <div className="flex-1 overflow-y-auto">
+          <MessageSkeleton />
+        </div>
+      ) : conversationId && conversationQuery.isError ? (
+        <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+          Couldn’t load this conversation. Please try again.
+        </div>
+      ) : hasContent ? (
+        <MessageList
+          messages={messages}
+          pendingUserMessage={chat.pendingUserMessage}
+          toolBlock={chat.toolBlock}
+          streamingContent={chat.streamingContent}
+          streamState={chat.streamState}
+        />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          Select a conversation or start a new chat.
-        </p>
+        <div className="flex-1 overflow-y-auto">
+          <EmptyConversationState onSelect={handleSend} />
+        </div>
       )}
+
+      {chat.usageLimit ? (
+        <UsageLimitBanner
+          resetIn={chat.usageLimit.resetIn}
+          message={chat.usageLimit.message}
+          onExpire={chat.clearUsageLimit}
+        />
+      ) : null}
+
+      {chat.error ? (
+        <ErrorToast message={chat.error} onDismiss={chat.dismissError} />
+      ) : null}
+
+      <ChatInput
+        onSend={handleSend}
+        onStop={chat.stop}
+        isStreaming={chat.isStreaming}
+        disabled={chat.usageLimit !== null}
+        focusKey={conversationId ?? 'new'}
+      />
     </div>
   );
 }
