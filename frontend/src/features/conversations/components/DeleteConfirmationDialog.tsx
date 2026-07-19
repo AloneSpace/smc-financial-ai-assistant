@@ -34,7 +34,7 @@ export function DeleteConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
       <DialogContent
-        className="max-w-sm"
+        className="max-w-sm gap-5 rounded-2xl"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           cancelRef.current?.focus();
@@ -43,17 +43,18 @@ export function DeleteConfirmationDialog({
         <DialogHeader className="items-center text-center sm:text-center">
           <span
             aria-hidden
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive ring-8 ring-destructive/5"
+            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive ring-8 ring-destructive/5"
           >
             <Trash2 className="h-6 w-6" />
           </span>
-          <DialogTitle className="pt-1">Delete conversation</DialogTitle>
+          <DialogTitle className="pt-1">Delete this chat?</DialogTitle>
           <DialogDescription>
-            This action can&apos;t be undone.
+            You&apos;re about to permanently delete this conversation and all its
+            messages. This can&apos;t be undone.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border bg-muted/40 px-3 py-2.5 text-center">
+        <div className="rounded-xl border bg-muted/40 px-3 py-2.5 text-center">
           <p className="truncate text-sm font-medium text-foreground">
             {conversationTitle}
           </p>
