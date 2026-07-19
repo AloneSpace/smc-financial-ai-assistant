@@ -1,9 +1,11 @@
-import { LogOut, Plus, X } from 'lucide-react';
+import { ChevronsUpDown, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/common/UserAvatar';
+import { ProfileModal } from '@/features/profile/components/ProfileModal';
 import { cn } from '@/utils/cn';
 import {
   useConversations,
@@ -29,7 +31,6 @@ export function ConversationSidebar({
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
 
   const { data, isLoading, isError } = useConversations();
   const createConversation = useCreateConversation();
@@ -37,6 +38,7 @@ export function ConversationSidebar({
   const renameConversation = useRenameConversation();
 
   const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const handleNewChat = async () => {
     const conversation = await createConversation.mutateAsync(undefined);
@@ -118,14 +120,27 @@ export function ConversationSidebar({
         </div>
       </nav>
 
-      <div className="flex items-center gap-2 border-t p-3">
-        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-          {user?.email}
-        </span>
-        <Button variant="ghost" size="icon" aria-label="Log out" onClick={logout}>
-          <LogOut className="h-4 w-4" />
-        </Button>
+      <div className="border-t p-2">
+        <button
+          type="button"
+          onClick={() => setProfileOpen(true)}
+          aria-label="Open account"
+          className="flex w-full items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-accent/50"
+        >
+          {user && <UserAvatar name={user.name} email={user.email} />}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium">
+              {user?.name ?? 'Account'}
+            </span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {user?.email}
+            </span>
+          </span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
       </div>
+
+      <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} />
 
       <DeleteConfirmationDialog
         open={pendingDelete !== null}

@@ -103,4 +103,29 @@ describe('UsageService', () => {
       expect(cost).toBeCloseTo(12.5, 5);
     });
   });
+
+  describe('getSummary', () => {
+    it('reports spend, budget, remaining, and reset window', async () => {
+      redis.get.mockResolvedValue('0.25');
+      redis.ttl.mockResolvedValue(1800);
+
+      const summary = await service.getSummary('u1');
+
+      expect(summary).toEqual({
+        spentUsd: 0.25,
+        budgetUsd: 1.0,
+        remainingUsd: 0.75,
+        resetInSeconds: 1800,
+      });
+    });
+
+    it('never reports negative remaining budget', async () => {
+      redis.get.mockResolvedValue('1.5');
+      redis.ttl.mockResolvedValue(600);
+
+      const summary = await service.getSummary('u1');
+
+      expect(summary.remainingUsd).toBe(0);
+    });
+  });
 });

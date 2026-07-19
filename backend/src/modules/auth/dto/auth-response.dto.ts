@@ -8,6 +8,9 @@ export class UserDto {
   @ApiProperty({ format: 'email', example: 'user@example.com' })
   email!: string;
 
+  @ApiProperty({ type: String, nullable: true, example: 'Jane Analyst' })
+  name!: string | null;
+
   @ApiProperty({ format: 'date-time', description: 'ISO 8601 creation timestamp.' })
   createdAt!: string;
 }

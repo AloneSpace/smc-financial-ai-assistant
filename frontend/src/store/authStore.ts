@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { authService } from '@/services/authService';
 import { clearToken, getToken, setToken } from '@/utils/token';
-import type { Credentials, User } from '@/features/auth/types';
+import type { Credentials, RegisterCredentials, User } from '@/features/auth/types';
 
 interface AuthState {
   user: User | null;
@@ -11,7 +11,9 @@ interface AuthState {
   /** Verify any persisted token by fetching the profile. Call once on app load. */
   initialize: () => Promise<void>;
   login: (credentials: Credentials) => Promise<void>;
-  register: (credentials: Credentials) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<void>;
+  /** Update the current user's profile and refresh the store. */
+  updateProfile: (payload: { name?: string }) => Promise<void>;
   logout: () => void;
 }
 
@@ -46,6 +48,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { accessToken, user } = await authService.register(credentials);
     setToken(accessToken);
     set({ user, isAuthenticated: true });
+  },
+
+  updateProfile: async (payload) => {
+    const user = await authService.updateProfile(payload);
+    set({ user });
   },
 
   logout: () => {
