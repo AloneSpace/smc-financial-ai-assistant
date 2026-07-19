@@ -21,7 +21,7 @@ spec:
         - name: backend
           # Image + tag are set centrally in kustomization.yaml (images:).
           image: ghcr.io/alonespace/smc-financial-ai-assistant-backend:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           envFrom:
