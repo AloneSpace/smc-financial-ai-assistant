@@ -31,7 +31,9 @@ async function bootstrap(): Promise<void> {
   const port = config.get<number>('app.port') ?? 3000;
   await app.listen(port);
   logger.log(`Backend listening on http://localhost:${port}`);
-  logger.log(`API reference (Scalar) on http://localhost:${port}/${API_REFERENCE_PATH}`);
+  logger.log(
+    `API reference (Scalar) available on http://localhost:${port}/api/${API_REFERENCE_PATH}`,
+  );
 }
 
 void bootstrap();

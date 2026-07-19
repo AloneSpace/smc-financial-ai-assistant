@@ -5,7 +5,7 @@ import { apiReference } from '@scalar/nestjs-api-reference';
 /** Where the raw OpenAPI 3 document is served. */
 export const OPENAPI_JSON_PATH = 'api/openapi.json';
 /** Where the Scalar API reference UI is served (in place of Swagger UI). */
-export const API_REFERENCE_PATH = 'api/docs';
+export const API_REFERENCE_PATH = '/docs';
 
 /**
  * Builds the OpenAPI document and serves it through the Scalar API reference
@@ -46,7 +46,7 @@ export function setupApiDocs(app: INestApplication): OpenAPIObject {
 
   // Scalar API reference UI (replaces the classic Swagger UI page).
   app.use(
-    `/${API_REFERENCE_PATH}`,
+    `/api/${API_REFERENCE_PATH}`,
     apiReference({
       content: document,
       title: 'Financial AI Chat Assistant — API Reference',
