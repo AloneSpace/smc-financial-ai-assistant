@@ -10,6 +10,8 @@ interface ConversationItemProps {
   isActive: boolean;
   onRequestDelete: (conversation: ConversationSummary) => void;
   onRename: (id: string, title: string) => void;
+  /** Called when the conversation link is followed (closes the mobile drawer). */
+  onNavigate?: () => void;
 }
 
 export function ConversationItem({
@@ -17,6 +19,7 @@ export function ConversationItem({
   isActive,
   onRequestDelete,
   onRename,
+  onNavigate,
 }: ConversationItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(conversation.title);
@@ -81,6 +84,7 @@ export function ConversationItem({
     <Link
       to={`/chat/${conversation.id}`}
       data-testid="conversation-item"
+      onClick={() => onNavigate?.()}
       className={cn(
         'group flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-sm transition-colors',
         isActive

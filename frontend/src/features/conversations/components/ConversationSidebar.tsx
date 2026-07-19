@@ -1,9 +1,10 @@
-import { LogOut, Plus } from 'lucide-react';
+import { LogOut, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Toast } from '@/components/common/Toast';
+import { cn } from '@/utils/cn';
 import {
   useConversations,
   useCreateConversation,
@@ -15,7 +16,16 @@ import { ConversationItem } from './ConversationItem';
 import { ConversationSkeleton } from './ConversationSkeleton';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
-export function ConversationSidebar() {
+interface ConversationSidebarProps {
+  /** Whether the mobile drawer is open. Ignored at md+ (always visible). */
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function ConversationSidebar({
+  isOpen,
+  onClose,
+}: ConversationSidebarProps) {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -32,6 +42,7 @@ export function ConversationSidebar() {
   const handleNewChat = async () => {
     const conversation = await createConversation.mutateAsync(undefined);
     navigate(`/chat/${conversation.id}`);
+    onClose();
   };
 
   const handleConfirmDelete = async () => {
@@ -54,8 +65,15 @@ export function ConversationSidebar() {
   const conversations = data?.data ?? [];
 
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-r bg-muted/20">
-      <div className="p-3">
+    <aside
+      className={cn(
+        'flex h-full w-72 shrink-0 flex-col border-r bg-background',
+        // Mobile: fixed slide-in drawer. md+: static column.
+        'fixed inset-y-0 left-0 z-40 transition-transform duration-200 md:static md:z-auto md:translate-x-0',
+        isOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full',
+      )}
+    >
+      <div className="flex items-center gap-2 p-3">
         <Button
           className="w-full justify-start"
           onClick={handleNewChat}
@@ -63,6 +81,15 @@ export function ConversationSidebar() {
         >
           <Plus className="h-4 w-4" />
           New chat
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Close conversations"
+          className="shrink-0 md:hidden"
+          onClick={onClose}
+        >
+          <X className="h-5 w-5" />
         </Button>
       </div>
 
@@ -86,6 +113,7 @@ export function ConversationSidebar() {
               isActive={conversation.id === conversationId}
               onRequestDelete={setPendingDelete}
               onRename={handleRename}
+              onNavigate={onClose}
             />
           ))}
         </div>
