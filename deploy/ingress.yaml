@@ -1,6 +1,11 @@
 # Traefik IngressRoute (k3s ships Traefik by default).
-# Routes /api → backend (NestJS keeps its own /api prefix, no stripping),
-# everything else → frontend SPA. Traefik streams SSE natively.
+# Single host, path-based routing:
+#   /api  → backend (NestJS keeps its own /api prefix, no stripping)
+#   /*    → frontend SPA
+# Traefik streams SSE natively. TLS cert is issued by cert-manager
+# (see cert-issuer.yaml) into the `finchat-tls` secret.
+---
+# HTTPS (websecure / :443) — the real traffic.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -8,15 +13,48 @@ metadata:
   namespace: finchat
 spec:
   entryPoints:
-    - web
+    - websecure
   routes:
-    - match: Host(`finchat.local`) && PathPrefix(`/api`)
+    - match: Host(`finchat.plaintechlab.com`) && PathPrefix(`/api`)
       kind: Rule
       services:
         - name: backend
           port: 3000
-    - match: Host(`finchat.local`)
+    - match: Host(`finchat.plaintechlab.com`)
       kind: Rule
       services:
         - name: frontend
           port: 80
+  tls:
+    secretName: finchat-tls
+---
+# HTTP (web / :80) — redirect everything to HTTPS.
+# cert-manager's HTTP-01 challenge (/.well-known/acme-challenge/...) is served
+# by a temporary Ingress it creates, which Traefik matches at higher priority,
+# so this catch-all redirect does not break issuance.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: finchat-ingress-redirect
+  namespace: finchat
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`finchat.plaintechlab.com`)
+      kind: Rule
+      services:
+        - name: frontend
+          port: 80
+      middlewares:
+        - name: https-redirect
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: finchat
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

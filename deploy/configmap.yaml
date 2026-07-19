@@ -16,4 +16,4 @@ data:
   USAGE_BUDGET_USD: "1.0"
   USAGE_RESET_INTERVAL_SECONDS: "3600"
   JWT_EXPIRY: "24h"
-  FRONTEND_URL: "https://finchat.local"
+  FRONTEND_URL: "https://finchat.plaintechlab.com"

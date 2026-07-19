@@ -13,9 +13,13 @@ spec:
       labels:
         app: frontend
     spec:
+      # Pull the GHCR image published by .github/workflows/build-push.yml.
+      # Omit if you import images directly into k3s (see deploy/README.md).
+      imagePullSecrets:
+        - name: ghcr-pull-secret
       containers:
         - name: frontend
-          # Build & push this image from ./frontend (target: production, nginx).
+          # Image + tag are set centrally in kustomization.yaml (images:).
           image: finchat-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:

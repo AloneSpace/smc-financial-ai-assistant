@@ -35,3 +35,6 @@ npm-debug.log*
 **/.DS_Store
 .idea/
 *.swp
+
+# ── Secrets & local-only assets ───────────────────────────────
+deploy/secret.yaml
