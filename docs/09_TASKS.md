@@ -530,7 +530,7 @@
 - [ ] Apply all manifests: `kubectl apply -k deploy/`
 - [ ] Verify all pods reach `Running` state: `kubectl get pods -n finchat`
 - [ ] Verify PostgreSQL PVC is bound: `kubectl get pvc -n finchat`
-- [ ] Import financial data into the PostgreSQL pod: `kubectl exec -n finchat deploy/postgres -- psql -U postgres finchat -f /financial_data.sql`
+- [ ] Import financial data into the PostgreSQL pod: `kubectl exec -n finchat deploy/postgres -- psql -U postgres finchat -f /data/financial_data.sql`
 - [ ] Verify Traefik ingress routes correctly: `curl https://<k3s-host>/api/health`
 - [ ] Verify SSE streaming works through Traefik (no buffering)
 - [ ] Verify `.env` and real Secrets are not committed to git

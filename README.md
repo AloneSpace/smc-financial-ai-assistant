@@ -154,15 +154,15 @@ This starts:
 In a separate terminal, after the services are healthy:
 
 ```bash
-docker compose exec postgres psql -U postgres -d finchat -f /docker-entrypoint-initdb.d/financial_data.sql
+./scripts/import-financial-data.sh
 ```
 
-Or using the host machine:
+This imports `data/financial_data.sql`, applies the `financial_data` indexes
+(`docs/05_DATABASE.md` §8.1), and prints the row count. Both SQL files are
+idempotent, so re-running is safe.
 
-```bash
-docker exec -i $(docker compose ps -q postgres) \
-  psql -U postgres finchat < data/financial_data.sql
-```
+The application tables (`users`, `conversations`, `messages`) need no step here —
+the backend runs its TypeORM migrations at boot.
 
 ### 5. Open the application
 
@@ -230,13 +230,11 @@ cert-manager and redirects plain HTTP to HTTPS. Watch it come up with
 ### 2. Import financial data
 
 ```bash
-# Wait for the postgres pod to be Ready
-kubectl wait --for=condition=Ready pod -l app=postgres -n finchat --timeout=60s
-
-# Copy and import the SQL dump
-kubectl cp data/financial_data.sql finchat/$(kubectl get pod -l app=postgres -n finchat -o jsonpath='{.items[0].metadata.name}'):/tmp/financial_data.sql
-kubectl exec -n finchat deploy/postgres -- psql -U postgres finchat -f /tmp/financial_data.sql
+./scripts/import-financial-data-k8s.sh
 ```
+
+Waits for the postgres pod, imports the dump, and applies the indexes. See
+`deploy/README.md` step 4 for the equivalent manual `kubectl` commands.
 
 ### 3. Verify
 

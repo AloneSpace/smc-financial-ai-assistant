@@ -170,17 +170,46 @@ kubectl describe certificate finchat-tls -n finchat   # if it stalls
 ### 4 — Import financial data
 
 ```bash
+./scripts/import-financial-data-k8s.sh
+```
+
+Waits for the postgres pod, imports `data/financial_data.sql`, applies the
+`financial_data` indexes (`docs/05_DATABASE.md` §8.1), and prints the row count.
+Both SQL files are idempotent, so re-running is safe.
+
+Application tables (`users`, `conversations`, `messages`) and their indexes
+(§8.2) need no step here — the backend runs its TypeORM migrations at boot
+(`migrationsRun: true`; `synchronize` is off everywhere).
+
+<details>
+<summary>Equivalent manual commands</summary>
+
+```bash
 kubectl wait --for=condition=Ready pod -l app=postgres -n finchat --timeout=90s
 POSTGRES_POD=$(kubectl get pod -l app=postgres -n finchat -o jsonpath='{.items[0].metadata.name}')
-kubectl cp data/financial_data.sql finchat/${POSTGRES_POD}:/tmp/financial_data.sql
-kubectl exec -n finchat ${POSTGRES_POD} -- psql -U postgres finchat -f /tmp/financial_data.sql
+
+# POSTGRES_USER is generated per-deployment — read it from the Secret rather
+# than assuming "postgres", or psql fails with: role "postgres" does not exist
+PGUSER=$(kubectl get secret finchat-secret -n finchat -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
+
+kubectl exec -i -n finchat ${POSTGRES_POD} -- \
+  psql -v ON_ERROR_STOP=1 -U ${PGUSER} -d finchat < data/financial_data.sql
+kubectl exec -i -n finchat ${POSTGRES_POD} -- \
+  psql -v ON_ERROR_STOP=1 -U ${PGUSER} -d finchat < scripts/financial-data-indexes.sql
 ```
+
+</details>
 
 ### 5 — Verify
 
 ```bash
 kubectl get pods,svc,pvc -n finchat
 kubectl get certificate -n finchat                 # finchat-tls READY=True
+
+# Schema: 3 idx_financial_data_* plus the migration-created app indexes (5 total)
+kubectl exec -n finchat statefulset/postgres -- \
+  psql -U $(kubectl get secret finchat-secret -n finchat -o jsonpath='{.data.POSTGRES_USER}' | base64 -d) \
+       -d finchat -c "\di idx_*"
 curl https://finchat.plaintechlab.com/api/health   # → { "status": "ok" }
 ```
 
