@@ -20,7 +20,7 @@ spec:
       containers:
         - name: frontend
           # Image + tag are set centrally in kustomization.yaml (images:).
-          image: finchat-frontend:latest
+          image: ghcr.io/alonespace/smc-financial-ai-assistant-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
