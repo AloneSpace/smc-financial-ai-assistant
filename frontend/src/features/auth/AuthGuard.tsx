@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
+import { PageLoader } from '@/components/common/PageLoader';
 import { useAuthStore } from '@/store/authStore';
 
 interface AuthGuardProps {
@@ -13,11 +14,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const isInitializing = useAuthStore((s) => s.isInitializing);
 
   if (isInitializing) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    );
+    return <PageLoader label="Restoring your session…" />;
   }
 
   if (!isAuthenticated) {

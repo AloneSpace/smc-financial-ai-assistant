@@ -68,4 +68,19 @@
       "rlig" 1,
       "calt" 1;
   }
+
+  /*
+   * Decorative motion (floating auth badges, entrance transitions, button
+   * press) is opt-out for users who ask the OS for reduced motion. Loader
+   * spinners are intentionally left running — they convey pending state.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

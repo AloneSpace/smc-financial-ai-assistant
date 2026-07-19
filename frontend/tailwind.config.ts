@@ -51,6 +51,28 @@ const config: Config = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      keyframes: {
+        /* Auth illustration: orbiting badges drift on their own offsets. */
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        /* Staggered entrance for auth form rows. */
+        'fade-up': {
+          from: { opacity: '0', transform: 'translateY(12px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        /* Full-page loader: three dots pulsing in sequence. */
+        'dot-pulse': {
+          '0%, 80%, 100%': { opacity: '0.25', transform: 'scale(0.75)' },
+          '40%': { opacity: '1', transform: 'scale(1)' },
+        },
+      },
+      animation: {
+        float: 'float 6s ease-in-out infinite',
+        'fade-up': 'fade-up 0.5s ease-out both',
+        'dot-pulse': 'dot-pulse 1.4s ease-in-out infinite',
+      },
     },
   },
   plugins: [animate],

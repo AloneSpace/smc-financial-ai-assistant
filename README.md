@@ -112,13 +112,28 @@ User question
 
 ---
 
+---
+
+### Demo account
+
+A pre-seeded account is available for reviewers who would rather not register:
+
+| Email              | Password        |
+| ------------------ | --------------- |
+| `demo@finchat.com` | `thisisfordemo` |
+
+Registering a new account works identically — the demo account exists purely as a
+shortcut for evaluating the baseline scenarios.
+
+---
+
 ## Quick Start (Docker)
 
 ### 1. Clone the repository
 
 ```bash
 git clone <repository-url>
-cd smc-fullstack-eng-takehome
+cd smc-financial-ai-assistant
 ```
 
 ### 2. Configure environment variables
