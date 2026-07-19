@@ -4,6 +4,23 @@ A full-stack AI-powered chat application that lets authenticated users ask natur
 
 ---
 
+## 🚀 Live Demo
+
+The application is deployed and available for review:
+
+| Resource       | URL                                                                    |
+| -------------- | ---------------------------------------------------------------------- |
+| **App**        | [https://finchat.plaintechlab.com](https://finchat.plaintechlab.com)   |
+| **API Docs**   | [https://finchat.plaintechlab.com/api/docs](https://finchat.plaintechlab.com/api/docs) |
+
+**Demo account** (no registration needed):
+
+| Email              | Password        |
+| ------------------ | --------------- |
+| `demo@finchat.com` | `thisisfordemo` |
+
+---
+
 ## Features
 
 - **SQL-Grounded AI** — Every financial figure comes from the database. The AI executes `SELECT` queries and cannot fabricate numbers.
