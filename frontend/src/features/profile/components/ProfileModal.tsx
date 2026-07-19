@@ -33,7 +33,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-11/12 sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Account</DialogTitle>
         </DialogHeader>

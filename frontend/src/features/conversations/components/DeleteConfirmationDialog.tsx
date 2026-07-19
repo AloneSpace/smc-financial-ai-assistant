@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Trash2 } from 'lucide-react';
+import { MessageSquare, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,28 +34,33 @@ export function DeleteConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
       <DialogContent
-        className="max-w-sm gap-5 rounded-2xl"
+        className="w-11/12 gap-5 rounded-2xl p-6 sm:max-w-[26rem]"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           cancelRef.current?.focus();
         }}
       >
-        <DialogHeader className="items-center text-center sm:text-center">
+        <DialogHeader className="items-center gap-3 space-y-0 text-center sm:text-center">
           <span
             aria-hidden
-            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive ring-8 ring-destructive/5"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive"
           >
-            <Trash2 className="h-6 w-6" />
+            <Trash2 className="h-5 w-5" />
           </span>
-          <DialogTitle className="pt-1">Delete this chat?</DialogTitle>
-          <DialogDescription>
-            You&apos;re about to permanently delete this conversation and all its
-            messages. This can&apos;t be undone.
+          <DialogTitle className="text-xl font-semibold tracking-tight">
+            Delete this chat?
+          </DialogTitle>
+          <DialogDescription className="max-w-[34ch] text-[0.9375rem] leading-relaxed">
+            This conversation and all its messages will be permanently deleted.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-xl border bg-muted/40 px-3 py-2.5 text-center">
-          <p className="truncate text-sm font-medium text-foreground">
+        <div className="flex items-center gap-2.5 rounded-xl border bg-muted/50 px-3.5 py-3">
+          <MessageSquare
+            aria-hidden
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+          />
+          <p className="truncate text-sm font-medium leading-6 text-foreground">
             {conversationTitle}
           </p>
         </div>
@@ -64,7 +69,7 @@ export function DeleteConfirmationDialog({
           <Button
             ref={cancelRef}
             variant="outline"
-            className="flex-1"
+            className="h-11 flex-1 font-medium"
             onClick={onCancel}
             disabled={isDeleting}
           >
@@ -72,7 +77,7 @@ export function DeleteConfirmationDialog({
           </Button>
           <Button
             variant="destructive"
-            className="flex-1"
+            className="h-11 flex-1 font-medium"
             onClick={onConfirm}
             disabled={isDeleting}
           >

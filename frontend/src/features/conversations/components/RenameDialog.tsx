@@ -42,7 +42,7 @@ export function RenameDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
       <DialogContent
-        className="max-w-sm"
+        className="w-11/12 sm:max-w-md rounded-2xl"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           inputRef.current?.focus();
@@ -84,7 +84,7 @@ export function RenameDialog({
             Cancel
           </Button>
           <Button
-            className="flex-1"
+            className="flex-1 text-white"
             onClick={() => onSave(trimmed)}
             disabled={!canSave}
           >

@@ -9,7 +9,6 @@ import { ProfileModal } from '@/features/profile/components/ProfileModal';
 import { cn } from '@/utils/cn';
 import {
   useConversations,
-  useCreateConversation,
   useDeleteConversation,
   useRenameConversation,
 } from '../hooks/useConversations';
@@ -33,16 +32,15 @@ export function ConversationSidebar({
   const user = useAuthStore((s) => s.user);
 
   const { data, isLoading, isError } = useConversations();
-  const createConversation = useCreateConversation();
   const deleteConversation = useDeleteConversation();
   const renameConversation = useRenameConversation();
 
   const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const handleNewChat = async () => {
-    const conversation = await createConversation.mutateAsync(undefined);
-    navigate(`/chat/${conversation.id}`);
+  // No API call here — the conversation is created on the first message sent.
+  const handleNewChat = () => {
+    navigate('/chat');
     onClose();
   };
 
@@ -78,7 +76,6 @@ export function ConversationSidebar({
         <Button
           className="w-full justify-start text-white"
           onClick={handleNewChat}
-          disabled={createConversation.isPending}
         >
           <Plus className="h-4 w-4" />
           New chat

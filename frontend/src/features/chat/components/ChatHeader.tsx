@@ -147,20 +147,21 @@ export function ChatHeader({
         Share
       </Button>
 
-      {/* Mobile: kebab menu with rename / share / delete. */}
-      {conversationId && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Chat options"
-              className="shrink-0 md:hidden"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+      {/* Mobile: kebab menu (far right) with rename / share / delete. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Chat options"
+            className="ml-auto shrink-0 md:hidden"
+            disabled={!conversationId}
+          >
+            <MoreVertical className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        {conversationId && (
+          <DropdownMenuContent align="end" className="bg-background">
             <DropdownMenuItem onSelect={() => setRenameOpen(true)}>
               <Pencil className="h-4 w-4" />
               Rename chat
@@ -172,14 +173,14 @@ export function ChatHeader({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() => setDeleteOpen(true)}
-              className="bg-destructive/10 text-destructive focus:bg-destructive/20 focus:text-destructive"
+              className="bg-red-600 text-white focus:bg-destructive/30"
             >
               <Trash2 className="h-4 w-4" />
               Delete chat
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+        )}
+      </DropdownMenu>
 
       <RenameDialog
         open={renameOpen}
