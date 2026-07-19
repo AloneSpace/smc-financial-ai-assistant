@@ -32,7 +32,7 @@ async function bootstrap(): Promise<void> {
   await app.listen(port);
   logger.log(`Backend listening on http://localhost:${port}`);
   logger.log(
-    `API reference (Scalar) available on http://localhost:${port}/api/${API_REFERENCE_PATH}`,
+    `API reference (Scalar) available on http://localhost:${port}/${API_REFERENCE_PATH}`,
   );
 }
 
