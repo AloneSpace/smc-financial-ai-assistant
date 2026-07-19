@@ -10,6 +10,7 @@ import {
   toConversationWithMessagesDto,
 } from './conversation.mapper';
 import { CreateConversationDto } from './dto/create-conversation.dto';
+import { UpdateConversationDto } from './dto/update-conversation.dto';
 import {
   ConversationSummaryDto,
   ConversationWithMessagesDto,
@@ -70,6 +71,19 @@ export class ConversationsService {
     });
     this.assertOwned(conversation, userId);
     return toConversationWithMessagesDto(conversation);
+  }
+
+  /** Rename an owned conversation, returning the updated summary. */
+  async update(
+    userId: string,
+    id: string,
+    dto: UpdateConversationDto,
+  ): Promise<ConversationSummaryDto> {
+    const conversation = await this.conversationRepo.findOne({ where: { id } });
+    this.assertOwned(conversation, userId);
+    conversation.title = dto.title;
+    const saved = await this.conversationRepo.save(conversation);
+    return toConversationSummaryDto(saved);
   }
 
   /** Permanently delete a conversation (messages cascade via FK). */

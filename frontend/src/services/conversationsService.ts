@@ -29,6 +29,13 @@ export const conversationsService = {
     return res.data;
   },
 
+  async rename(id: string, title: string): Promise<ConversationSummary> {
+    const res = await api.patch<ConversationSummary>(`/conversations/${id}`, {
+      title,
+    });
+    return res.data;
+  },
+
   async remove(id: string): Promise<void> {
     await api.delete(`/conversations/${id}`);
   },

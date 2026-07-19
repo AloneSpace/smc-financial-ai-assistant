@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,20 +40,30 @@ export function DeleteConfirmationDialog({
           cancelRef.current?.focus();
         }}
       >
-        <DialogHeader>
-          <DialogTitle>Delete conversation</DialogTitle>
+        <DialogHeader className="items-center text-center sm:text-center">
+          <span
+            aria-hidden
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive ring-8 ring-destructive/5"
+          >
+            <Trash2 className="h-6 w-6" />
+          </span>
+          <DialogTitle className="pt-1">Delete conversation</DialogTitle>
           <DialogDescription>
-            Delete{' '}
-            <span className="font-medium text-foreground">
-              “{conversationTitle}”
-            </span>
-            ? This cannot be undone.
+            This action can&apos;t be undone.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-0">
+
+        <div className="rounded-md border bg-muted/40 px-3 py-2.5 text-center">
+          <p className="truncate text-sm font-medium text-foreground">
+            {conversationTitle}
+          </p>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-2">
           <Button
             ref={cancelRef}
             variant="outline"
+            className="flex-1"
             onClick={onCancel}
             disabled={isDeleting}
           >
@@ -60,6 +71,7 @@ export function DeleteConfirmationDialog({
           </Button>
           <Button
             variant="destructive"
+            className="flex-1"
             onClick={onConfirm}
             disabled={isDeleting}
           >

@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -22,6 +23,7 @@ import {
 } from './dto/conversation.dto';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { ListConversationsDto } from './dto/list-conversations.dto';
+import { UpdateConversationDto } from './dto/update-conversation.dto';
 
 @ApiTags('conversations')
 @ApiBearerAuth('bearer')
@@ -62,6 +64,19 @@ export class ConversationsController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ConversationWithMessagesDto> {
     return this.conversationsService.findOne(user.id, id);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Rename a conversation' })
+  @ApiResponse({ status: 200, description: 'Conversation renamed.', type: ConversationSummaryDto })
+  @ApiResponse({ status: 403, description: 'Conversation belongs to another user.' })
+  @ApiResponse({ status: 404, description: 'Conversation not found.' })
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateConversationDto,
+  ): Promise<ConversationSummaryDto> {
+    return this.conversationsService.update(user.id, id, dto);
   }
 
   @Delete(':id')

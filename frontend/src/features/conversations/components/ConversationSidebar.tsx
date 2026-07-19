@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
+import { Toast } from '@/components/common/Toast';
 import {
   useConversations,
   useCreateConversation,
   useDeleteConversation,
+  useRenameConversation,
 } from '../hooks/useConversations';
 import type { ConversationSummary } from '../types';
 import { ConversationItem } from './ConversationItem';
@@ -22,8 +24,10 @@ export function ConversationSidebar() {
   const { data, isLoading, isError } = useConversations();
   const createConversation = useCreateConversation();
   const deleteConversation = useDeleteConversation();
+  const renameConversation = useRenameConversation();
 
   const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
 
   const handleNewChat = async () => {
     const conversation = await createConversation.mutateAsync(undefined);
@@ -33,11 +37,18 @@ export function ConversationSidebar() {
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return;
     const deletedId = pendingDelete.id;
+    const deletedTitle = pendingDelete.title;
     await deleteConversation.mutateAsync(deletedId);
     setPendingDelete(null);
+    setNotification(`Deleted “${deletedTitle}”`);
     if (deletedId === conversationId) {
       navigate('/chat');
     }
+  };
+
+  const handleRename = async (id: string, title: string) => {
+    await renameConversation.mutateAsync({ id, title });
+    setNotification(`Renamed to “${title}”`);
   };
 
   const conversations = data?.data ?? [];
@@ -74,6 +85,7 @@ export function ConversationSidebar() {
               conversation={conversation}
               isActive={conversation.id === conversationId}
               onRequestDelete={setPendingDelete}
+              onRename={handleRename}
             />
           ))}
         </div>
@@ -95,6 +107,14 @@ export function ConversationSidebar() {
         onCancel={() => setPendingDelete(null)}
         onConfirm={handleConfirmDelete}
       />
+
+      {notification && (
+        <Toast
+          variant="success"
+          message={notification}
+          onDismiss={() => setNotification(null)}
+        />
+      )}
     </aside>
   );
 }
