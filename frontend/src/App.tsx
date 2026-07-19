@@ -5,6 +5,7 @@ import { AuthGuard } from '@/features/auth/AuthGuard';
 import { ChatPage } from '@/pages/ChatPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
+import { Toaster } from '@/components/ui/sonner';
 import { queryClient } from '@/services/queryClient';
 
 /**
@@ -34,6 +35,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <Toaster position="top-right" richColors />
     </QueryClientProvider>
   );
 }

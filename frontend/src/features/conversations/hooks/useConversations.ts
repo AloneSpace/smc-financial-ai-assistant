@@ -26,13 +26,14 @@ export function useCreateConversation() {
   });
 }
 
-/** Rename a conversation, then refresh the sidebar list. */
+/** Rename a conversation, then refresh the sidebar list and its detail view. */
 export function useRenameConversation() {
   const queryClient = useQueryClient();
   return useMutation<ConversationSummary, unknown, { id: string; title: string }>({
     mutationFn: ({ id, title }) => conversationsService.rename(id, title),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+      void queryClient.invalidateQueries({ queryKey: conversationKeys.detail(id) });
     },
   });
 }

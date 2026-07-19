@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ErrorToast } from '@/components/common/ErrorToast';
+import { useAppLayout } from '@/components/layout/useAppLayout';
 import { useConversation } from '@/features/conversations/hooks/useConversation';
 import { useCreateConversation } from '@/features/conversations/hooks/useConversations';
 import { useChat } from '@/features/chat/hooks/useChat';
+import { ChatHeader } from '@/features/chat/components/ChatHeader';
 import { ChatInput } from '@/features/chat/components/ChatInput';
 import { MessageList } from '@/features/chat/components/MessageList';
 import { MessageSkeleton } from '@/features/chat/components/MessageSkeleton';
@@ -22,6 +24,7 @@ export function ChatPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { openSidebar } = useAppLayout();
   const createConversation = useCreateConversation();
 
   const conversationQuery = useConversation(conversationId);
@@ -61,6 +64,12 @@ export function ChatPage() {
 
   return (
     <div className="flex h-full flex-col">
+      <ChatHeader
+        title={conversationQuery.data?.title}
+        conversationId={conversationId}
+        onOpenSidebar={openSidebar}
+      />
+
       {conversationId && conversationQuery.isLoading ? (
         <div className="flex-1 overflow-y-auto">
           <MessageSkeleton />

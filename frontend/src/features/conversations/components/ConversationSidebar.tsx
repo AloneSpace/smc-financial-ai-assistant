@@ -1,9 +1,9 @@
 import { LogOut, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
-import { Toast } from '@/components/common/Toast';
 import { cn } from '@/utils/cn';
 import {
   useConversations,
@@ -37,7 +37,6 @@ export function ConversationSidebar({
   const renameConversation = useRenameConversation();
 
   const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
-  const [notification, setNotification] = useState<string | null>(null);
 
   const handleNewChat = async () => {
     const conversation = await createConversation.mutateAsync(undefined);
@@ -51,7 +50,7 @@ export function ConversationSidebar({
     const deletedTitle = pendingDelete.title;
     await deleteConversation.mutateAsync(deletedId);
     setPendingDelete(null);
-    setNotification(`Deleted “${deletedTitle}”`);
+    toast.success(`Deleted “${deletedTitle}”`);
     if (deletedId === conversationId) {
       navigate('/chat');
     }
@@ -59,7 +58,7 @@ export function ConversationSidebar({
 
   const handleRename = async (id: string, title: string) => {
     await renameConversation.mutateAsync({ id, title });
-    setNotification(`Renamed to “${title}”`);
+    toast.success(`Renamed to “${title}”`);
   };
 
   const conversations = data?.data ?? [];
@@ -75,7 +74,7 @@ export function ConversationSidebar({
     >
       <div className="flex items-center gap-2 p-3">
         <Button
-          className="w-full justify-start"
+          className="w-full justify-start text-white"
           onClick={handleNewChat}
           disabled={createConversation.isPending}
         >
@@ -135,14 +134,6 @@ export function ConversationSidebar({
         onCancel={() => setPendingDelete(null)}
         onConfirm={handleConfirmDelete}
       />
-
-      {notification && (
-        <Toast
-          variant="success"
-          message={notification}
-          onDismiss={() => setNotification(null)}
-        />
-      )}
     </aside>
   );
 }
