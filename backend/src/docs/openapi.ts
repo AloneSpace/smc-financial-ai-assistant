@@ -5,7 +5,7 @@ import { apiReference } from '@scalar/nestjs-api-reference';
 /** Where the raw OpenAPI 3 document is served. */
 export const OPENAPI_JSON_PATH = 'api/openapi.json';
 /** Where the Scalar API reference UI is served (in place of Swagger UI). */
-export const API_REFERENCE_PATH = 'docs';
+export const API_REFERENCE_PATH = 'api/docs';
 
 /**
  * Builds the OpenAPI document and serves it through the Scalar API reference
