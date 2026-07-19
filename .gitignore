@@ -1,5 +1,5 @@
 # ── Secrets & local-only assets ───────────────────────────────
-config/
+/config/
 data/
 take-home-assignment.pdf
 .env
