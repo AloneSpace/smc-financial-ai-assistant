@@ -196,7 +196,13 @@ Full manifest reference: [`deploy/README.md`](deploy/README.md)
 ### Prerequisites
 
 - k3s installed and `kubectl` configured (`k3s` single-node or any compatible cluster)
-- Docker images built and accessible (push to a registry or import directly)
+- Docker images built and accessible (push to a registry or import directly).
+  The frontend image must be built with `VITE_API_URL=""` so the SPA calls the
+  API same-origin via `/api` (CI images already do; see `frontend/Dockerfile`).
+- **cert-manager** installed for TLS:
+  `kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml`
+- A DNS `A` record for `finchat.plaintechlab.com` pointing at the k3s node's
+  public IP (single host — frontend at `/`, backend at `/api`, no API subdomain)
 
 ### 1. Apply manifests
 
@@ -205,21 +211,21 @@ Full manifest reference: [`deploy/README.md`](deploy/README.md)
 kubectl apply -f deploy/namespace.yaml
 
 # Create the real Secret (never commit this file)
-kubectl create secret generic finchat-secrets \
+kubectl create secret generic finchat-secret \
   --namespace finchat \
-  --from-literal=DATABASE_URL="postgresql://postgres:<password>@postgres-svc:5432/finchat" \
-  --from-literal=REDIS_URL="redis://redis-svc:6379" \
+  --from-literal=DATABASE_URL="postgresql://postgres:<password>@postgres:5432/finchat" \
+  --from-literal=REDIS_URL="redis://redis:6379" \
   --from-literal=JWT_SECRET="<min-32-char-secret>" \
-  --from-literal=OPENAI_API_KEY="sk-..."
+  --from-literal=ANTHROPIC_API_KEY="sk-ant-..."
 
-# Apply everything else
-kubectl apply -f deploy/configmap.yaml
-kubectl apply -f deploy/postgres/
-kubectl apply -f deploy/redis/
-kubectl apply -f deploy/backend/
-kubectl apply -f deploy/frontend/
-kubectl apply -f deploy/ingress.yaml
+# Set a real contact email in deploy/cert-issuer.yaml (spec.acme.email) first,
+# then apply everything (ingress, cert-manager issuer + Certificate included).
+kubectl apply -k deploy/
 ```
+
+The Traefik ingress terminates TLS with a Let's Encrypt certificate issued by
+cert-manager and redirects plain HTTP to HTTPS. Watch it come up with
+`kubectl get certificate -n finchat` (READY flips to `True`).
 
 ### 2. Import financial data
 
@@ -235,10 +241,10 @@ kubectl exec -n finchat deploy/postgres -- psql -U postgres finchat -f /tmp/fina
 ### 3. Verify
 
 ```bash
-kubectl get pods -n finchat          # All pods should be Running
-kubectl get pvc  -n finchat          # PVCs should be Bound
-kubectl get ingress -n finchat       # Traefik route visible
-curl https://<k3s-host>/api/health   # → { "status": "ok" }
+kubectl get pods -n finchat                        # All pods should be Running
+kubectl get pvc  -n finchat                        # PVCs should be Bound
+kubectl get certificate -n finchat                 # finchat-tls READY=True
+curl https://finchat.plaintechlab.com/api/health   # → { "status": "ok" }
 ```
 
 > **SSE streaming note:** Traefik supports server-sent events natively with no extra configuration. The backend must include the `X-Accel-Buffering: no` header on the `/chat` response.

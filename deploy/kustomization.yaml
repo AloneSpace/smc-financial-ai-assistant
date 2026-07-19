@@ -6,6 +6,17 @@ kind: Kustomization
 # secret.example.yaml so real credentials are never committed.
 namespace: finchat
 
+# Central image mapping. CI (.github/workflows/build-push.yml) pushes to GHCR;
+# point these at your repo owner and pin newTag to an immutable tag (a git SHA
+# or a released vX.Y.Z) for reproducible rollouts instead of :latest.
+images:
+  - name: finchat-backend
+    newName: ghcr.io/alonespace/smc-financial-ai-assistant-backend
+    newTag: latest
+  - name: finchat-frontend
+    newName: ghcr.io/alonespace/smc-financial-ai-assistant-frontend
+    newTag: latest
+
 resources:
   - namespace.yaml
   - configmap.yaml
@@ -19,3 +30,5 @@ resources:
   - frontend/deployment.yaml
   - frontend/service.yaml
   - ingress.yaml
+  - cert-issuer.yaml
+  - secret.yaml

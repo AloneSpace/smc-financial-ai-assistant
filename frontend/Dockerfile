@@ -13,6 +13,12 @@ CMD ["npm", "run", "dev"]
 
 # ── Build (production static assets) ─────────────────────────
 FROM base AS build
+# VITE_API_URL is baked into the bundle at build time (Vite inlines
+# import.meta.env.*). Empty = call the API on the same origin via /api,
+# which is what the path-routing ingress expects. Override with a full
+# origin (e.g. https://api.example.com) only for a split-subdomain setup.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm install
 COPY . .
 RUN npm run build

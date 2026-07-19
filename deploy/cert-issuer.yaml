@@ -1,0 +1,39 @@
+# cert-manager: automatic Let's Encrypt TLS for finchat.plaintechlab.com.
+#
+# Prerequisite (install once per cluster, not part of this kustomize apply):
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+#
+# ClusterIssuer is cluster-scoped, so it has no namespace. The Certificate
+# lives in `finchat` and writes the issued cert into secret `finchat-tls`,
+# which ingress.yaml references.
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # ⚠️ Replace with a real address you control — Let's Encrypt sends
+    # expiry warnings here.
+    email: plaintechlab.core@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            # k3s registers Traefik under this ingressClass.
+            ingressClassName: traefik
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: finchat-tls
+  namespace: finchat
+spec:
+  secretName: finchat-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - finchat.plaintechlab.com

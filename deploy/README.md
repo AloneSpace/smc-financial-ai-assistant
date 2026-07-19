@@ -21,7 +21,8 @@ deploy/
 ├── namespace.yaml             ← finchat namespace
 ├── configmap.yaml             ← Non-secret env vars
 ├── secret.example.yaml        ← Secret template (placeholders only — never commit real values)
-├── ingress.yaml               ← Traefik IngressRoute
+├── ingress.yaml               ← Traefik IngressRoute (HTTPS + HTTP→HTTPS redirect)
+├── cert-issuer.yaml           ← cert-manager ClusterIssuer + Certificate (Let's Encrypt)
 ├── postgres/
 │   ├── pvc.yaml               ← PersistentVolumeClaim (5Gi, local-path)
 │   ├── statefulset.yaml       ← PostgreSQL 16 StatefulSet
@@ -62,7 +63,10 @@ In-cluster service DNS (used in `DATABASE_URL` / `REDIS_URL`): `postgres`, `redi
 | `USAGE_BUDGET_USD`               | `1.0`                  |
 | `USAGE_RESET_INTERVAL_SECONDS`   | `3600`                 |
 | `JWT_EXPIRY`                     | `24h`                  |
-| `FRONTEND_URL`                   | `https://finchat.local`|
+| `FRONTEND_URL`                   | `https://finchat.plaintechlab.com` |
+
+> `FRONTEND_URL` must exactly match the ingress host (scheme + host) — the
+> backend uses it as the CORS allow-origin (`backend/src/main.ts`).
 
 ## `secret.example.yaml` — TEMPLATE ONLY
 
@@ -86,18 +90,58 @@ kubectl create secret generic finchat-secret \
 
 ---
 
+## Domain & TLS
+
+The stack serves a **single host** with path-based routing:
+`finchat.plaintechlab.com/` → frontend, `finchat.plaintechlab.com/api` → backend.
+The backend is *not* on a separate subdomain, so there is no cross-origin (CORS)
+split and no separate API DNS record.
+
+### DNS
+
+Point one `A` record at the public IP of the k3s node (the one running Traefik):
+
+```
+finchat.plaintechlab.com   A   <k3s-node-public-IP>
+```
+
+If the domain sits behind Cloudflare, set it to **DNS-only (grey cloud)** at least
+until the first certificate is issued — the proxy otherwise intercepts the
+Let's Encrypt HTTP-01 challenge.
+
+### TLS (cert-manager + Let's Encrypt)
+
+`cert-issuer.yaml` defines a `ClusterIssuer` (Let's Encrypt production, HTTP-01
+challenge solved through Traefik) and a `Certificate` that writes the issued cert
+into the `finchat-tls` secret referenced by `ingress.yaml`. Before applying, set a
+real contact address in `cert-issuer.yaml` (`spec.acme.email`).
+
+cert-manager itself is a **cluster prerequisite** — install it once:
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+```
+
+---
+
 ## Deployment Steps
 
 ### 1 — Build images and import into k3s
 
 ```bash
-docker build -t finchat-backend:latest --target production ./backend
-docker build -t finchat-frontend:latest --target production ./frontend
+docker build -t finchat-backend:latest  --target production ./backend
+# Frontend: VITE_API_URL is baked in at build time. Leave it empty so the SPA
+# calls the API on the same origin via /api (matches the path-routing ingress).
+docker build -t finchat-frontend:latest --target production --build-arg VITE_API_URL="" ./frontend
 
 # Single-node k3s: import directly into containerd (no registry needed)
 docker save finchat-backend:latest  | sudo k3s ctr images import -
 docker save finchat-frontend:latest | sudo k3s ctr images import -
 ```
+
+> Using CI-published GHCR images instead? They already build with an empty
+> `VITE_API_URL` (see `frontend/Dockerfile`), so they call `/api` same-origin
+> out of the box — just point `kustomization.yaml` `images:` at your tags.
 
 ### 2 — Namespace + Secret first
 
@@ -113,7 +157,15 @@ kubectl apply -k deploy/
 ```
 
 `kustomization.yaml` intentionally omits the Secret so credentials are never
-applied from a committed file.
+applied from a committed file. It **does** include `cert-issuer.yaml`; make sure
+cert-manager is installed first (see above) or those resources fail to apply.
+
+Watch the certificate become ready (usually within ~1–2 minutes):
+
+```bash
+kubectl get certificate -n finchat        # READY should flip to True
+kubectl describe certificate finchat-tls -n finchat   # if it stalls
+```
 
 ### 4 — Import financial data
 
@@ -128,7 +180,15 @@ kubectl exec -n finchat ${POSTGRES_POD} -- psql -U postgres finchat -f /tmp/fina
 
 ```bash
 kubectl get pods,svc,pvc -n finchat
-curl http://finchat.local/api/health   # add finchat.local to /etc/hosts → k3s node IP
+kubectl get certificate -n finchat                 # finchat-tls READY=True
+curl https://finchat.plaintechlab.com/api/health   # → { "status": "ok" }
+```
+
+Before DNS has propagated you can still test against the node IP directly:
+
+```bash
+curl --resolve finchat.plaintechlab.com:443:<k3s-node-IP> \
+  https://finchat.plaintechlab.com/api/health
 ```
 
 ---
@@ -159,5 +219,6 @@ buffers the token stream.
 - [ ] `secret.example.yaml` holds only placeholder values
 - [ ] `ANTHROPIC_API_KEY` scoped/limited in the Anthropic console
 - [ ] Postgres and Redis are ClusterIP only (never exposed outside the cluster)
-- [ ] Ingress TLS configured (cert-manager + Let's Encrypt recommended)
+- [x] Ingress TLS via cert-manager + Let's Encrypt (`cert-issuer.yaml`); HTTP redirects to HTTPS
+- [ ] Real contact email set in `cert-issuer.yaml` (`spec.acme.email`)
 - [ ] `FRONTEND_URL` in the ConfigMap matches the real ingress host (CORS)
