@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { Button } from '@/components/common/button';
-import { Input } from '@/components/common/input';
-import { Label } from '@/components/common/label';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/layout/AuthCard';
 import { useAuthStore } from '@/store/authStore';
 

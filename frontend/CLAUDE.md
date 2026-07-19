@@ -52,7 +52,8 @@ components, hooks, and types.
 src/
 ├── assets/                  # Images, fonts, static assets
 ├── components/
-│   ├── common/              # Reusable primitives: button, input, label, ErrorToast
+│   ├── ui/                  # shadcn/ui primitives: button, input, label, alert, dialog
+│   ├── common/              # Composed reusable components: ErrorToast
 │   └── layout/              # Layout shells: AppLayout, AuthCard
 ├── features/
 │   ├── auth/                # AuthGuard.tsx, types.ts

@@ -2,7 +2,7 @@ import { LogOut, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
-import { Button } from '@/components/common/button';
+import { Button } from '@/components/ui/button';
 import {
   useConversations,
   useCreateConversation,

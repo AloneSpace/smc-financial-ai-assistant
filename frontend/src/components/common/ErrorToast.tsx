@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { AlertCircle, X } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 interface ErrorToastProps {
   message: string;
@@ -20,20 +22,23 @@ export function ErrorToast({
   }, [onDismiss, duration]);
 
   return (
-    <div
-      role="alert"
-      className="fixed right-4 top-4 z-50 flex max-w-sm items-start gap-2 rounded-lg border border-destructive/40 bg-card px-4 py-3 text-sm text-destructive shadow-lg"
+    <Alert
+      variant="destructive"
+      className="fixed right-4 top-4 z-50 max-w-sm border-destructive/40 bg-card pr-10 shadow-lg"
     >
-      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-      <span className="flex-1">{message}</span>
-      <button
+      {/* Placed before the icon so the Alert's `svg~*` padding rule skips it. */}
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         onClick={onDismiss}
         aria-label="Dismiss"
-        className="rounded p-0.5 text-muted-foreground hover:bg-accent"
+        className="absolute right-1 top-1 h-7 w-7 text-muted-foreground"
       >
         <X className="h-4 w-4" />
-      </button>
-    </div>
+      </Button>
+      <AlertCircle className="h-4 w-4" />
+      <AlertDescription>{message}</AlertDescription>
+    </Alert>
   );
 }
