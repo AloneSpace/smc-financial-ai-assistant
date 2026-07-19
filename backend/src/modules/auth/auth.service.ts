@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import { AuthResponseDto, UserDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { User } from './entities/user.entity';
 import { JwtPayload } from './jwt.types';
 import { toUserDto } from './user.mapper';
@@ -35,7 +36,11 @@ export class AuthService {
     }
 
     const passwordHash = await argon2.hash(dto.password);
-    const user = this.userRepo.create({ email: dto.email, passwordHash });
+    const user = this.userRepo.create({
+      email: dto.email,
+      passwordHash,
+      name: dto.name?.trim() || null,
+    });
     const saved = await this.userRepo.save(user);
     this.logger.log(`Registered user ${saved.id}`);
 
@@ -73,6 +78,19 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return toUserDto(user);
+  }
+
+  /** Update the current user's editable profile fields (name). */
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserDto> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (dto.name !== undefined) {
+      user.name = dto.name.trim() || null;
+    }
+    const saved = await this.userRepo.save(user);
+    return toUserDto(saved);
   }
 
   private buildAuthResponse(user: User): AuthResponseDto {

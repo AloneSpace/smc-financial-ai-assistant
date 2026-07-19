@@ -19,6 +19,7 @@ describe('AuthService', () => {
   const existingUser: User = {
     id: 'user-1',
     email: 'analyst@example.com',
+    name: null,
     passwordHash: 'hashed-pw',
     createdAt: new Date('2026-07-14T10:00:00.000Z'),
   };
@@ -60,6 +61,7 @@ describe('AuthService', () => {
       expect(result.user).toEqual({
         id: 'user-1',
         email: 'analyst@example.com',
+        name: null,
         createdAt: '2026-07-14T10:00:00.000Z',
       });
       expect(jwtService.sign).toHaveBeenCalledWith({
@@ -121,6 +123,7 @@ describe('AuthService', () => {
       expect(result).toEqual({
         id: 'user-1',
         email: 'analyst@example.com',
+        name: null,
         createdAt: '2026-07-14T10:00:00.000Z',
       });
     });
@@ -131,6 +134,38 @@ describe('AuthService', () => {
       await expect(service.getProfile('ghost')).rejects.toBeInstanceOf(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('updateProfile', () => {
+    it('updates the name and returns the mapped profile', async () => {
+      userRepo.findOne.mockResolvedValue({ ...existingUser });
+      userRepo.save.mockImplementation((u) => Promise.resolve(u as User));
+
+      const result = await service.updateProfile('user-1', { name: 'Jane Analyst' });
+
+      expect(userRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1', name: 'Jane Analyst' }),
+      );
+      expect(result.name).toBe('Jane Analyst');
+    });
+
+    it('clears the name when given a blank value', async () => {
+      userRepo.findOne.mockResolvedValue({ ...existingUser, name: 'Old Name' });
+      userRepo.save.mockImplementation((u) => Promise.resolve(u as User));
+
+      const result = await service.updateProfile('user-1', { name: '  ' });
+
+      expect(result.name).toBeNull();
+    });
+
+    it('throws Unauthorized when the user no longer exists', async () => {
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateProfile('ghost', { name: 'X' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(userRepo.save).not.toHaveBeenCalled();
     });
   });
 });

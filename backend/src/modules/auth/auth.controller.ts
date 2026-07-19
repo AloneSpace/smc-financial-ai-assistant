@@ -1,10 +1,19 @@
-import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthResponseDto, UserDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthenticatedUser } from './jwt.types';
 
@@ -38,5 +47,18 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Missing or invalid JWT.' })
   me(@CurrentUser() user: AuthenticatedUser): Promise<UserDto> {
     return this.authService.getProfile(user.id);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Update the current user’s profile' })
+  @ApiResponse({ status: 200, description: 'Updated user profile.', type: UserDto })
+  @ApiResponse({ status: 401, description: 'Missing or invalid JWT.' })
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<UserDto> {
+    return this.authService.updateProfile(user.id, dto);
   }
 }

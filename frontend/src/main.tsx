@@ -1,10 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './app/App';
-import { applySystemTheme } from '@/shared/lib/theme';
+import { App } from './App';
+import { useAuthStore } from '@/store/authStore';
+import { applySystemTheme } from '@/utils/theme';
 import './index.css';
 
 applySystemTheme();
+// Validate any persisted JWT before the first render paths hit AuthGuard.
+void useAuthStore.getState().initialize();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

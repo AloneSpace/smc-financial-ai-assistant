@@ -4,6 +4,7 @@ import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 import { AiProvider } from '../../config/ai.config';
 import { estimateCostUsd } from '../ai/pricing.util';
+import { UsageSummaryDto } from './dto/usage-summary.dto';
 
 /**
  * Per-user hourly spend tracking backed by Redis. A single float key per user
@@ -48,6 +49,18 @@ export class UsageService {
   async getTimeToReset(userId: string): Promise<number> {
     const ttl = await this.redis.ttl(this.key(userId));
     return ttl > 0 ? ttl : this.resetIntervalSeconds;
+  }
+
+  /** Budget-window summary for the current user (for `GET /usage`). */
+  async getSummary(userId: string): Promise<UsageSummaryDto> {
+    const spentUsd = await this.getSpend(userId);
+    const resetInSeconds = await this.getTimeToReset(userId);
+    return {
+      spentUsd,
+      budgetUsd: this.budgetUsd,
+      remainingUsd: Math.max(this.budgetUsd - spentUsd, 0),
+      resetInSeconds,
+    };
   }
 
   /**

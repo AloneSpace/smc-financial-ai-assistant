@@ -76,6 +76,7 @@ The application follows a **three-tier architecture** with a clear separation be
 | shadcn/ui           | Latest      | Accessible, unstyled-base component library          |
 | TailwindCSS         | 3+          | Utility-first styling                                |
 | TanStack Query      | v5          | Server state management, caching, background refetch |
+| Zustand             | v4          | Global client state (auth session)                   |
 | React Hook Form     | v7          | Form state management                                |
 | Zod                 | v3          | Schema validation for forms and API responses        |
 | Recharts            | v2          | Chart rendering (BarChart, LineChart)                |
@@ -87,17 +88,13 @@ The application follows a **three-tier architecture** with a clear separation be
 ```
 frontend/
 ├── src/
-│   ├── app/                    # App entrypoint, router, providers
-│   │   ├── App.tsx
-│   │   ├── router.tsx
-│   │   └── providers.tsx
-│   ├── features/               # Domain-driven feature folders
-│   │   ├── auth/               # Login, Register, auth state
-│   │   │   ├── components/
-│   │   │   ├── hooks/
-│   │   │   ├── api/
-│   │   │   └── types.ts
-│   │   ├── chat/               # Chat input, message list, streaming
+│   ├── assets/                 # Images, fonts, static assets
+│   ├── components/             # Cross-feature UI
+│   │   ├── common/             # Reusable primitives (button, input, label, ErrorToast)
+│   │   └── layout/             # Layout shells (AppLayout, AuthCard)
+│   ├── features/               # Domain-driven feature folders (components + hooks + types)
+│   │   ├── auth/               # AuthGuard, types
+│   │   ├── chat/               # Streaming components + useChat hook
 │   │   │   ├── components/
 │   │   │   │   ├── ChatInput.tsx
 │   │   │   │   ├── MessageList.tsx
@@ -108,21 +105,18 @@ frontend/
 │   │   │   │   ├── DataTable.tsx
 │   │   │   │   └── DataChart.tsx
 │   │   │   ├── hooks/
-│   │   │   │   ├── useChat.ts
-│   │   │   │   └── useStream.ts
-│   │   │   ├── api/
+│   │   │   │   └── useChat.ts
 │   │   │   └── types.ts
-│   │   └── conversations/      # Sidebar, conversation list, delete
+│   │   └── conversations/      # Sidebar, conversation list, delete + hooks
 │   │       ├── components/
 │   │       ├── hooks/
-│   │       ├── api/
 │   │       └── types.ts
-│   ├── shared/                 # Cross-feature shared code
-│   │   ├── components/         # Button, Modal, Spinner, etc.
-│   │   ├── hooks/              # useLocalStorage, useDebounce
-│   │   ├── lib/                # axios instance, queryClient
-│   │   └── types/              # Global TypeScript types
-│   └── main.tsx
+│   ├── pages/                  # Route-level pages (LoginPage, RegisterPage, ChatPage)
+│   ├── services/               # API layer: api (axios instance), queryClient, *Service
+│   ├── store/                  # Zustand stores (authStore)
+│   ├── utils/                  # cn, token, theme helpers
+│   ├── App.tsx                 # Root component: providers + router
+│   └── main.tsx                # Entry point
 ├── index.html
 ├── vite.config.ts
 ├── tailwind.config.ts
@@ -134,7 +128,7 @@ frontend/
 | State Type                             | Solution                     | Reason                                                           |
 | -------------------------------------- | ---------------------------- | ---------------------------------------------------------------- |
 | Server state (conversations, messages) | TanStack Query               | Automatic caching, refetch, optimistic updates                   |
-| Auth state (user, token)               | React Context + localStorage | Simple, global, persisted                                        |
+| Auth state (user, token)               | Zustand + localStorage       | Global, persisted, minimal boilerplate, no provider nesting      |
 | Form state (login, register)           | React Hook Form              | Performant, minimal re-renders                                   |
 | Streaming buffer state                 | `useRef` + `useState`        | Streaming tokens appended imperatively to avoid re-render storms |
 | UI state (sidebar open, modal)         | Local `useState`             | Component-local, no global state needed                          |
@@ -144,7 +138,7 @@ frontend/
 The frontend receives a stream via the Fetch API with `ReadableStream`, not the EventSource API, because it needs to send an auth header (EventSource does not support custom headers).
 
 ```
-useStream hook
+chatService.streamChat (driven by the useChat hook)
 ├── fetch(POST /chat, { body, headers: { Authorization } })
 ├── response.body.getReader()
 ├── while (true)

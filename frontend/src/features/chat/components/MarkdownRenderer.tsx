@@ -1,7 +1,7 @@
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/utils/cn';
 import { DataTable } from './DataTable';
 import { DataChart } from './DataChart';
 

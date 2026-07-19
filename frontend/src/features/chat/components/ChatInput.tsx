@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Square } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/utils/cn';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -80,7 +81,7 @@ export function ChatInput({
               ? 'Usage limit reached — please wait…'
               : "Ask about a company's financials…"
           }
-          className="flex-1 resize-none rounded-xl border border-input bg-background px-4 py-2.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          className="flex-1 resize-none rounded-xl border bg-background px-4 py-2.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         />
         {isStreaming ? (
           <button
@@ -104,7 +105,7 @@ export function ChatInput({
                 : 'cursor-not-allowed bg-muted text-muted-foreground',
             )}
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-4 w-4 text-white" />
           </button>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { conversationsApi } from '../api/conversations.api';
+import { conversationsService } from '@/services/conversationsService';
 import type { ConversationSummary, PaginatedConversations } from '../types';
 
 export const conversationKeys = {
@@ -11,7 +11,7 @@ export const conversationKeys = {
 export function useConversations() {
   return useQuery<PaginatedConversations>({
     queryKey: conversationKeys.all,
-    queryFn: () => conversationsApi.list(),
+    queryFn: () => conversationsService.list(),
   });
 }
 
@@ -19,9 +19,21 @@ export function useConversations() {
 export function useCreateConversation() {
   const queryClient = useQueryClient();
   return useMutation<ConversationSummary, unknown, string | undefined>({
-    mutationFn: (title) => conversationsApi.create(title),
+    mutationFn: (title) => conversationsService.create(title),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+    },
+  });
+}
+
+/** Rename a conversation, then refresh the sidebar list and its detail view. */
+export function useRenameConversation() {
+  const queryClient = useQueryClient();
+  return useMutation<ConversationSummary, unknown, { id: string; title: string }>({
+    mutationFn: ({ id, title }) => conversationsService.rename(id, title),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+      void queryClient.invalidateQueries({ queryKey: conversationKeys.detail(id) });
     },
   });
 }
@@ -30,7 +42,7 @@ export function useCreateConversation() {
 export function useDeleteConversation() {
   const queryClient = useQueryClient();
   return useMutation<void, unknown, string>({
-    mutationFn: (id) => conversationsApi.remove(id),
+    mutationFn: (id) => conversationsService.remove(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
     },

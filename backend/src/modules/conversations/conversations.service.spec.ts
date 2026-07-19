@@ -121,6 +121,40 @@ describe('ConversationsService', () => {
     });
   });
 
+  describe('update', () => {
+    it('renames an owned conversation and returns the summary', async () => {
+      const existing = makeConversation({ title: 'Old title' });
+      repo.findOne.mockResolvedValue(existing);
+      repo.save.mockImplementation((c) => Promise.resolve(c as Conversation));
+
+      const result = await service.update('user-1', 'conv-1', {
+        title: 'New title',
+      });
+
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'conv-1', title: 'New title' }),
+      );
+      expect(result.title).toBe('New title');
+    });
+
+    it('throws Forbidden for another user and does not save', async () => {
+      repo.findOne.mockResolvedValue(makeConversation({ userId: 'someone-else' }));
+
+      await expect(
+        service.update('user-1', 'conv-1', { title: 'New title' }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the conversation does not exist', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update('user-1', 'missing', { title: 'New title' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
   describe('remove', () => {
     it('deletes an owned conversation', async () => {
       repo.findOne.mockResolvedValue(makeConversation());
