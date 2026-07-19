@@ -14,6 +14,7 @@ const registerSchema = z.object({
   name: z.string().max(120, 'Name is too long').optional(),
   email: z.string().email('Enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(8, 'Confirm Password must be at least 8 characters'),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -93,6 +94,19 @@ export function RegisterPage() {
           />
           {errors.password && (
             <p className="text-sm text-destructive">{errors.password.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirm Password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            {...register('confirmPassword')}
+          />
+          {errors.confirmPassword && (
+            <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
           )}
         </div>
 
