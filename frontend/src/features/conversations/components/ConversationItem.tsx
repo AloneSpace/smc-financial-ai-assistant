@@ -12,6 +12,8 @@ interface ConversationItemProps {
   onRename: (id: string, title: string) => void;
   /** Called when the conversation link is followed (closes the mobile drawer). */
   onNavigate?: () => void;
+  /** Return true to block the link and handle navigation to `to` yourself. */
+  onIntercept?: (to: string) => boolean;
 }
 
 export function ConversationItem({
@@ -20,6 +22,7 @@ export function ConversationItem({
   onRequestDelete,
   onRename,
   onNavigate,
+  onIntercept,
 }: ConversationItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(conversation.title);
@@ -80,11 +83,19 @@ export function ConversationItem({
     );
   }
 
+  const to = `/chat/${conversation.id}`;
+
   return (
     <Link
-      to={`/chat/${conversation.id}`}
+      to={to}
       data-testid="conversation-item"
-      onClick={() => onNavigate?.()}
+      onClick={(e) => {
+        if (onIntercept?.(to)) {
+          e.preventDefault();
+          return;
+        }
+        onNavigate?.();
+      }}
       className={cn(
         'group flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-sm transition-colors',
         isActive

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
+import { useStreamGuardStore } from '@/store/streamGuardStore';
+import { LeaveStreamDialog } from '@/features/chat/components/LeaveStreamDialog';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { ProfileModal } from '@/features/profile/components/ProfileModal';
@@ -37,11 +39,26 @@ export function ConversationSidebar({
 
   const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  /** Route the user asked for while a stream was still running, if any. */
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const isStreaming = useStreamGuardStore((s) => s.isStreaming);
+
+  const go = (to: string) => {
+    navigate(to);
+    onClose();
+  };
+
+  /** Defer navigation behind a confirmation while an answer is streaming. */
+  const interceptWhileStreaming = (to: string) => {
+    if (!isStreaming) return false;
+    setPendingNavigation(to);
+    return true;
+  };
 
   // No API call here — the conversation is created on the first message sent.
   const handleNewChat = () => {
-    navigate('/chat');
-    onClose();
+    if (interceptWhileStreaming('/chat')) return;
+    go('/chat');
   };
 
   const handleConfirmDelete = async () => {
@@ -112,6 +129,7 @@ export function ConversationSidebar({
               onRequestDelete={setPendingDelete}
               onRename={handleRename}
               onNavigate={onClose}
+              onIntercept={interceptWhileStreaming}
             />
           ))}
         </div>
@@ -138,6 +156,16 @@ export function ConversationSidebar({
       </div>
 
       <ProfileModal open={profileOpen} onOpenChange={setProfileOpen} />
+
+      <LeaveStreamDialog
+        open={pendingNavigation !== null}
+        onCancel={() => setPendingNavigation(null)}
+        onConfirm={() => {
+          const to = pendingNavigation;
+          setPendingNavigation(null);
+          if (to) go(to);
+        }}
+      />
 
       <DeleteConfirmationDialog
         open={pendingDelete !== null}

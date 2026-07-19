@@ -104,7 +104,7 @@ export function LoginPage() {
         <div className="animate-fade-up" style={{ animationDelay: '240ms' }}>
           <Button
             type="submit"
-            className="w-full"
+            className="w-full text-white"
             disabled={isSubmitting}
           >
             {isSubmitting ? (

@@ -138,7 +138,7 @@ export function RegisterPage() {
         <div className="animate-fade-up" style={{ animationDelay: '320ms' }}>
           <Button
             type="submit"
-            className="w-full"
+            className="w-full text-white"
             disabled={isSubmitting}
           >
             {isSubmitting ? (

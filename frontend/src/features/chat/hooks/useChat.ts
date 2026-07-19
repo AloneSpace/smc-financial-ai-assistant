@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { conversationKeys } from '@/features/conversations/hooks/useConversations';
+import type { ConversationWithMessages } from '@/features/conversations/types';
 import { chatService } from '@/services/chatService';
+import { conversationsService } from '@/services/conversationsService';
+import { useStreamGuardStore } from '@/store/streamGuardStore';
 import type { ChatStreamEvent, StreamState, ToolBlockState } from '../types';
 
 export interface UsageLimit {
@@ -63,29 +66,59 @@ export function useChat(conversationId: string | undefined): UseChatResult {
     }
   }, []);
 
-  const resetLive = useCallback(() => {
+  /**
+   * Drops the optimistic/live copy of the turn once the persisted rows are in
+   * the cache. A failed tool block is kept: it is never persisted, so refetched
+   * history cannot show it.
+   */
+  const resetLive = useCallback((keepToolBlock = false) => {
     bufferRef.current = '';
     setStreamingContent('');
-    setToolBlock(null);
+    if (!keepToolBlock) setToolBlock(null);
     setPendingUserMessage(null);
     messageIdRef.current = null;
   }, []);
 
   const finalize = useCallback(async () => {
     cancelRaf();
-    // Persisted user + tool + assistant rows now exist; refetch, then drop the
-    // optimistic/live state so nothing renders twice.
+    // Persisted user + tool + assistant rows now exist. Fetch them *outside*
+    // the cache, then write the cache and drop the live state in the same tick
+    // so React commits both together — writing the cache first would render one
+    // frame with the persisted turn *and* the optimistic copy still on screen.
+    const controller = abortRef.current;
+    let persisted: ConversationWithMessages | null = null;
     if (conversationId) {
-      await queryClient.invalidateQueries({
-        queryKey: conversationKeys.detail(conversationId),
-      });
+      try {
+        persisted = await conversationsService.get(conversationId);
+      } catch {
+        // Fall back to a plain invalidate below.
+      }
     }
-    await queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+    // The user switched conversations (or unmounted) while we were fetching —
+    // that turn's state is gone, so don't resurrect it.
+    if (controller?.signal.aborted) return;
+
+    if (conversationId) {
+      if (persisted) {
+        queryClient.setQueryData(
+          conversationKeys.detail(conversationId),
+          persisted,
+        );
+      } else {
+        void queryClient.invalidateQueries({
+          queryKey: conversationKeys.detail(conversationId),
+        });
+      }
+    }
+    void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
     if (!erroredRef.current) {
       resetLive();
       setStreamState('IDLE');
     } else {
-      // Keep the failed tool block / partial text visible; re-enable input.
+      // The backend persists whatever was streamed before the failure, so the
+      // live text is now a duplicate of a real row — drop it, keep the failed
+      // tool block, and re-enable input.
+      resetLive(true);
       setStreamState('ERROR');
     }
   }, [cancelRaf, conversationId, queryClient, resetLive]);
@@ -125,8 +158,11 @@ export function useChat(conversationId: string | undefined): UseChatResult {
           }));
           break;
         case 'error':
+          // The backend has already persisted the partial turn and will not
+          // send `done`, so finalise here instead.
           erroredRef.current = true;
           setError(event.message);
+          void finalize();
           break;
         case 'done':
           void finalize();
@@ -209,6 +245,25 @@ export function useChat(conversationId: string | undefined): UseChatResult {
     streamState === 'SENDING' ||
     streamState === 'STREAMING_TOOL' ||
     streamState === 'STREAMING_ANSWER';
+
+  // Warn on tab close / reload while an answer is still streaming.
+  useEffect(() => {
+    if (!isStreaming) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Legacy browsers require a non-empty returnValue; the text is ignored.
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isStreaming]);
+
+  // Publish the streaming flag so the sidebar can confirm before navigating.
+  const setGuardStreaming = useStreamGuardStore((s) => s.setStreaming);
+  useEffect(() => {
+    setGuardStreaming(isStreaming);
+    return () => setGuardStreaming(false);
+  }, [isStreaming, setGuardStreaming]);
 
   return {
     streamState,
