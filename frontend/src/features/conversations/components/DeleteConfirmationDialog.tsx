@@ -55,7 +55,13 @@ export function DeleteConfirmationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2.5 rounded-xl border bg-muted/50 px-3.5 py-3">
+        {/*
+          `min-w-0` is what makes the title truncate: this row is a grid item of
+          DialogContent, and a grid item's default `min-width: auto` lets it grow
+          to the title's full max-content width — the inner `truncate` then has an
+          unbounded box to truncate against and never kicks in.
+        */}
+        <div className="flex min-w-0 items-center gap-2.5 rounded-xl border bg-muted/50 px-3.5 py-3">
           <MessageSquare
             aria-hidden
             className="h-4 w-4 shrink-0 text-muted-foreground"

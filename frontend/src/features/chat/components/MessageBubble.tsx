@@ -19,7 +19,10 @@ export function MessageBubble({
   if (role === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-white">
+        <div
+          data-testid="user-message"
+          className="max-w-[80%] whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-white"
+        >
           {content}
         </div>
       </div>
@@ -29,6 +32,7 @@ export function MessageBubble({
   return (
     <div className="flex justify-start">
       <div
+        data-testid="assistant-message"
         className={cn(
           'max-w-[85%] break-words rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-2 text-card-foreground',
         )}
