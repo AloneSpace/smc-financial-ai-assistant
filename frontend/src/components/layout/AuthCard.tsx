@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { AuthIllustration } from '@/components/common/AuthIllustration';
+import { BrandLockup } from '@/components/common/BrandLockup';
 
 interface AuthCardProps {
   title: string;
@@ -29,6 +30,10 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
       <div className="relative grid w-full max-w-5xl animate-fade-up overflow-hidden rounded-3xl border border-white/40 bg-card/80 shadow-2xl shadow-indigo-900/10 backdrop-blur-xl dark:border-white/10 dark:shadow-black/40 lg:grid-cols-2">
         {/* Form panel */}
         <div className="flex flex-col justify-center px-6 py-10 sm:px-12 lg:order-2">
+          {/* Names the product before the form. Centred on narrow viewports to
+              sit with the compact artwork; left-aligned beside the heading on lg. */}
+          <BrandLockup className="mb-7 justify-center lg:justify-start" />
+
           {/* Compact artwork for narrow viewports */}
           <div className="mx-auto mb-6 h-32 w-32 lg:hidden">
             <AuthIllustration />

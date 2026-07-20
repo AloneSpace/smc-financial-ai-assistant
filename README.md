@@ -8,10 +8,10 @@ A full-stack AI-powered chat application that lets authenticated users ask natur
 
 The application is deployed and available for review:
 
-| Resource       | URL                                                                    |
-| -------------- | ---------------------------------------------------------------------- |
-| **App**        | [https://finchat.plaintechlab.com](https://finchat.plaintechlab.com)   |
-| **API Docs**   | [https://finchat.plaintechlab.com/api/docs](https://finchat.plaintechlab.com/api/docs) |
+| Resource     | URL                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------- |
+| **App**      | [https://finchat.plaintechlab.com](https://finchat.plaintechlab.com)                   |
+| **API Docs** | [https://finchat.plaintechlab.com/api/docs](https://finchat.plaintechlab.com/api/docs) |
 
 **Demo account** (no registration needed):
 
@@ -129,27 +129,12 @@ User question
 
 ---
 
----
-
-### Demo account
-
-A pre-seeded account is available for reviewers who would rather not register:
-
-| Email              | Password        |
-| ------------------ | --------------- |
-| `demo@finchat.com` | `thisisfordemo` |
-
-Registering a new account works identically — the demo account exists purely as a
-shortcut for evaluating the baseline scenarios.
-
----
-
 ## Quick Start (Docker)
 
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:AloneSpace/smc-financial-ai-assistant.git
 cd smc-financial-ai-assistant
 ```
 
@@ -167,6 +152,9 @@ JWT_SECRET=<random-32-chars>   # Required — generate with: openssl rand -hex 3
 ```
 
 All other values have working defaults for local development.
+
+To use Claude instead, set `AI_PROVIDER=anthropic` and fill in
+`ANTHROPIC_API_KEY`; the unused vendor's key may be left blank.
 
 ### 3. Start all services
 
@@ -206,19 +194,22 @@ Navigate to **[http://localhost:5173](http://localhost:5173)**, register an acco
 
 All variables are documented in `.env.example`. Never commit `.env`.
 
-| Variable                       | Required | Default                 | Description                              |
-| ------------------------------ | -------- | ----------------------- | ---------------------------------------- |
-| `DATABASE_URL`                 | ✅       | —                       | PostgreSQL connection string             |
-| `REDIS_URL`                    | ✅       | —                       | Redis connection string                  |
-| `JWT_SECRET`                   | ✅       | —                       | JWT signing secret, min 32 characters    |
-| `JWT_EXPIRY`                   | ❌       | `24h`                   | JWT token expiry duration                |
-| `OPENAI_API_KEY`               | ✅       | —                       | OpenAI API key                           |
-| `OPENAI_MODEL`                 | ❌       | `gpt-4o`                | OpenAI model to use                      |
-| `OPENAI_MAX_HISTORY_MESSAGES`  | ❌       | `20`                    | Max conversation messages sent to OpenAI |
+| Variable                       | Required | Default                 | Description                                                        |
+| ------------------------------ | -------- | ----------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`                 | ✅       | —                       | PostgreSQL connection string                                       |
+| `REDIS_URL`                    | ✅       | —                       | Redis connection string                                            |
+| `JWT_SECRET`                   | ✅       | —                       | JWT signing secret, min 32 characters                              |
+| `JWT_EXPIRY`                   | ❌       | `24h`                   | JWT token expiry duration                                          |
+| `AI_PROVIDER`                  | ❌       | `openai`                | Active vendor: `openai` or `anthropic`                             |
+| `OPENAI_API_KEY`               | ⚠️       | —                       | Required when `AI_PROVIDER=openai`                                 |
+| `OPENAI_MODEL`                 | ❌       | `gpt-4o`                | OpenAI model to use                                                |
+| `ANTHROPIC_API_KEY`            | ⚠️       | —                       | Required when `AI_PROVIDER=anthropic`                              |
+| `ANTHROPIC_MODEL`              | ❌       | `claude-opus-4-8`       | Anthropic model to use                                             |
+| `AI_MAX_HISTORY_MESSAGES`      | ❌       | `20`                    | Max conversation messages sent to the model                        |
 | `CHAT_STOP_GRACE_PERIOD_MS`    | ❌       | `5000`                  | Pause before calling the model so the user can Stop (`0` disables) |
-| `USAGE_BUDGET_USD`             | ❌       | `1.0`                   | Per-user hourly spending limit in USD    |
-| `USAGE_RESET_INTERVAL_SECONDS` | ❌       | `3600`                  | How often the usage budget resets        |
-| `FRONTEND_URL`                 | ❌       | `http://localhost:5173` | Frontend origin for CORS                 |
+| `USAGE_BUDGET_USD`             | ❌       | `1.0`                   | Per-user hourly spending limit in USD                              |
+| `USAGE_RESET_INTERVAL_SECONDS` | ❌       | `3600`                  | How often the usage budget resets                                  |
+| `FRONTEND_URL`                 | ❌       | `http://localhost:5173` | Frontend origin for CORS                                           |
 
 ---
 
@@ -305,21 +296,51 @@ npm run dev              # http://localhost:5173
 ### Run Tests
 
 ```bash
-# Backend unit tests
-cd backend && npm test
+# Backend unit tests (75 tests)
+cd backend && npm install && npm test
 
 # Backend test coverage
 cd backend && npm run test:cov
 
-# Frontend unit tests
-cd frontend && npm test
+# Frontend typecheck + lint
+cd frontend && npm install && npx tsc --noEmit && npm run lint
+```
 
-# E2E tests (requires Docker Compose running)
+> The frontend currently has no Vitest unit tests, so `cd frontend && npm test`
+> exits 1 with "No test files found". Frontend behaviour is covered by the
+> Playwright E2E scenarios below.
+
+### E2E tests (baseline scenarios)
+
+The E2E suite drives the **real** streaming UI, so the full stack must already
+be running (`docker compose up`), the financial data imported, and a valid AI
+key configured. Playwright is not part of any `package.json`, so install it in
+the repo root first:
+
+```bash
+# One-time setup, from the repo root
+npm install -D @playwright/test
+npx playwright install chromium
+
+# Run S1, S2, S3, S5, S6 (S4 is skipped by default — see below)
 npx playwright test
 
-# Run only baseline scenarios
-npx playwright test --grep "S[1-6]"
+# Run a single scenario
+npx playwright test --grep "S1"
 ```
+
+**S4 (usage limit)** needs a budget low enough for the second request to trip
+the guard, so it is skipped unless explicitly enabled. Set
+`USAGE_BUDGET_USD=0.0000001` in `.env`, restart the backend, then run it on its
+own — the near-zero budget would break the other scenarios:
+
+```bash
+docker compose up -d backend --force-recreate
+RUN_S4=1 npx playwright test --grep "S4"
+```
+
+Afterwards restore `USAGE_BUDGET_USD=1.0`, recreate the backend, and clear the
+recorded spend with `docker exec finchat-redis redis-cli FLUSHALL`.
 
 ---
 
@@ -376,17 +397,21 @@ smc-fullstack-eng-takehome/
 
 ## API Reference
 
-| Method   | Path                 | Auth | Description                            |
-| -------- | -------------------- | ---- | -------------------------------------- |
-| `POST`   | `/auth/register`     | ❌   | Register new user, returns JWT         |
-| `POST`   | `/auth/login`        | ❌   | Login, returns JWT                     |
-| `GET`    | `/auth/me`           | ✅   | Current user profile                   |
-| `POST`   | `/conversations`     | ✅   | Create conversation                    |
-| `GET`    | `/conversations`     | ✅   | Paginated conversation list            |
-| `GET`    | `/conversations/:id` | ✅   | Conversation with full message history |
-| `DELETE` | `/conversations/:id` | ✅   | Delete conversation + messages         |
-| `POST`   | `/chat`              | ✅   | Send message, stream SSE response      |
-| `POST`   | `/chat/stop`         | ✅   | Abort active stream, save partial      |
+All routes are served under the global `/api` prefix — e.g. locally
+`http://localhost:3000/api/auth/register`. `/health` is the one exception and
+is served unprefixed.
+
+| Method   | Path                     | Auth | Description                            |
+| -------- | ------------------------ | ---- | -------------------------------------- |
+| `POST`   | `/api/auth/register`     | ❌   | Register new user, returns JWT         |
+| `POST`   | `/api/auth/login`        | ❌   | Login, returns JWT                     |
+| `GET`    | `/api/auth/me`           | ✅   | Current user profile                   |
+| `POST`   | `/api/conversations`     | ✅   | Create conversation                    |
+| `GET`    | `/api/conversations`     | ✅   | Paginated conversation list            |
+| `GET`    | `/api/conversations/:id` | ✅   | Conversation with full message history |
+| `DELETE` | `/api/conversations/:id` | ✅   | Delete conversation + messages         |
+| `POST`   | `/api/chat`              | ✅   | Send message, stream SSE response      |
+| `POST`   | `/api/chat/stop`         | ✅   | Abort active stream, save partial      |
 
 Full specification: [`docs/06_API_SPEC.md`](docs/06_API_SPEC.md)
 

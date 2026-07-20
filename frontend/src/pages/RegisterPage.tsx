@@ -54,8 +54,11 @@ export function RegisterPage() {
     try {
       // confirmPassword is a client-side-only field; the API rejects unknown
       // properties, so it must not be sent.
-      const { confirmPassword: _confirmPassword, ...credentials } = values;
-      await registerAccount(credentials);
+      await registerAccount({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+      });
       navigate('/chat', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {

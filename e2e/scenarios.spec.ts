@@ -28,9 +28,13 @@ test('S2 — missing data is reported, never fabricated', async ({ page }) => {
   await waitForAnswer(page);
 
   // 2021 is outside coverage (2022–2025): the answer must say so.
-  await expect(
-    page.getByText(/not available|no data|does not|isn't available/i),
-  ).toBeVisible();
+  const answer = page.getByTestId('assistant-message');
+  await expect(answer).toContainText(
+    /not available|no data|do(es)? not have|don't have|only have access|outside/i,
+  );
+
+  // And it must never invent a figure for the uncovered year.
+  await expect(answer).not.toContainText(/\$\s?\d/);
 });
 
 test('S3 — stop generation preserves the partial answer', async ({ page }) => {
@@ -39,6 +43,12 @@ test('S3 — stop generation preserves the partial answer', async ({ page }) => 
 
   const stop = page.getByRole('button', { name: /stop generating/i });
   await expect(stop).toBeVisible({ timeout: 30_000 });
+
+  // Stop only once the answer has actually begun streaming. The backend waits
+  // CHAT_STOP_GRACE_PERIOD_MS before calling the model, so clicking during that
+  // window aborts with no assistant content — nothing partial to preserve.
+  const answer = page.getByTestId('assistant-message');
+  await expect(answer).toContainText(/\w/, { timeout: 45_000 });
   await stop.click();
 
   // Stop button disappears and a "generation stopped" marker is shown.
@@ -57,9 +67,12 @@ test('S5 — history survives a hard refresh with no duplicates', async ({
   await page.reload();
   await expect(page).toHaveURL(url);
 
-  // The user question renders exactly once after reload.
+  // The user question renders exactly once after reload. Scoped to message
+  // bubbles: the sidebar title and chat header also derive from this text.
   await expect(
-    page.getByText("What was Microsoft's revenue in 2024?", { exact: false }),
+    page
+      .getByTestId('user-message')
+      .filter({ hasText: "What was Microsoft's revenue in 2024?" }),
   ).toHaveCount(1);
 });
 
