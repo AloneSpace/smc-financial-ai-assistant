@@ -13,12 +13,17 @@ import { PageLoader } from '@/components/common/PageLoader';
 import { PasswordInput } from '@/components/common/PasswordInput';
 import { useAuthStore } from '@/store/authStore';
 
-const registerSchema = z.object({
-  name: z.string().max(120, 'Name is too long').optional(),
-  email: z.string().email('Enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string().min(8, 'Confirm Password must be at least 8 characters'),
-});
+const registerSchema = z
+  .object({
+    name: z.string().max(120, 'Name is too long').optional(),
+    email: z.string().email('Enter a valid email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(8, 'Confirm Password must be at least 8 characters'),
+  })
+  .refine((v) => v.password === v.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
@@ -47,7 +52,10 @@ export function RegisterPage() {
   const onSubmit = async (values: RegisterForm) => {
     setFormError(null);
     try {
-      await registerAccount(values);
+      // confirmPassword is a client-side-only field; the API rejects unknown
+      // properties, so it must not be sent.
+      const { confirmPassword: _confirmPassword, ...credentials } = values;
+      await registerAccount(credentials);
       navigate('/chat', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {

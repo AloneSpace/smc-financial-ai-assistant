@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ErrorToast } from '@/components/common/ErrorToast';
 import { useAppLayout } from '@/components/layout/useAppLayout';
 import { useConversation } from '@/features/conversations/hooks/useConversation';
+import type { Message } from '@/features/conversations/types';
 import { useCreateConversation } from '@/features/conversations/hooks/useConversations';
 import { useChat } from '@/features/chat/hooks/useChat';
 import { ChatHeader } from '@/features/chat/components/ChatHeader';
@@ -55,7 +56,20 @@ export function ChatPage() {
     navigate(`/chat/${conversation.id}`, { state: { initialMessage: message } });
   };
 
-  const messages = conversationQuery.data?.messages ?? [];
+  // The backend persists the user message before it starts streaming, so a
+  // history refetch that lands mid-turn would render that row *and* the
+  // optimistic `pendingUserMessage` — the same text twice. Pin the history to
+  // what it was when the turn started; `finalize` swaps in the persisted rows
+  // and releases the pin in one commit.
+  const frozenMessagesRef = useRef<Message[] | null>(null);
+  const liveMessages = conversationQuery.data?.messages ?? [];
+  if (!chat.isTurnActive) {
+    frozenMessagesRef.current = null;
+  } else if (frozenMessagesRef.current === null) {
+    frozenMessagesRef.current = liveMessages;
+  }
+  const messages = frozenMessagesRef.current ?? liveMessages;
+
   const hasContent =
     messages.length > 0 ||
     chat.pendingUserMessage !== null ||
@@ -70,11 +84,11 @@ export function ChatPage() {
         onOpenSidebar={openSidebar}
       />
 
-      {conversationId && conversationQuery.isLoading ? (
+      {conversationId && conversationQuery.isLoading && !chat.isTurnActive ? (
         <div className="flex-1 overflow-y-auto">
           <MessageSkeleton />
         </div>
-      ) : conversationId && conversationQuery.isError ? (
+      ) : conversationId && conversationQuery.isError && !chat.isTurnActive ? (
         <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
           Couldn’t load this conversation. Please try again.
         </div>

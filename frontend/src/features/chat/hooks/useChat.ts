@@ -20,6 +20,13 @@ interface UseChatResult {
   error: string | null;
   usageLimit: UsageLimit | null;
   isStreaming: boolean;
+  /**
+   * True from `send()` until the turn's persisted rows are in the cache. While
+   * set, the caller must keep rendering the history it had at send time — the
+   * backend persists the user message before streaming, so a history refetch
+   * landing mid-turn would render it alongside `pendingUserMessage`.
+   */
+  isTurnActive: boolean;
   send: (message: string) => void;
   stop: () => void;
   dismissError: () => void;
@@ -41,6 +48,7 @@ export function useChat(conversationId: string | undefined): UseChatResult {
   const [streamingContent, setStreamingContent] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [usageLimit, setUsageLimit] = useState<UsageLimit | null>(null);
+  const [isTurnActive, setIsTurnActive] = useState(false);
 
   const bufferRef = useRef('');
   const rafRef = useRef<number | null>(null);
@@ -111,6 +119,10 @@ export function useChat(conversationId: string | undefined): UseChatResult {
       }
     }
     void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
+    // Released in the same commit as the live state below, so the frozen
+    // history and the optimistic copy are swapped for the persisted rows
+    // together — never one frame with both.
+    setIsTurnActive(false);
     if (!erroredRef.current) {
       resetLive();
       setStreamState('IDLE');
@@ -183,6 +195,7 @@ export function useChat(conversationId: string | undefined): UseChatResult {
       setToolBlock(null);
       setPendingUserMessage(message);
       setStreamState('SENDING');
+      setIsTurnActive(true);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -195,10 +208,14 @@ export function useChat(conversationId: string | undefined): UseChatResult {
             erroredRef.current = true;
             setError(msg);
             setStreamState('ERROR');
+            // The turn stays "active": the optimistic message is still on
+            // screen and the backend may already have persisted its copy, so
+            // the history must stay frozen until the next send or switch.
           },
           onLimit: (resetIn, msg) => {
             // The request was rejected before sending; drop the optimistic msg.
             setPendingUserMessage(null);
+            setIsTurnActive(false);
             setUsageLimit({ resetIn, message: msg });
             setStreamState('IDLE');
           },
@@ -239,6 +256,7 @@ export function useChat(conversationId: string | undefined): UseChatResult {
     setStreamingContent('');
     setError(null);
     setUsageLimit(null);
+    setIsTurnActive(false);
   }, [conversationId, cancelRaf]);
 
   const isStreaming =
@@ -273,6 +291,7 @@ export function useChat(conversationId: string | undefined): UseChatResult {
     error,
     usageLimit,
     isStreaming,
+    isTurnActive,
     send,
     stop,
     dismissError,

@@ -3,9 +3,13 @@ import { expect, type Page } from '@playwright/test';
 /** Registers a fresh user and lands on the chat page. */
 export async function registerAndLogin(page: Page): Promise<string> {
   const email = `e2e_${Date.now()}_${Math.floor(Math.random() * 1e6)}@example.com`;
+  const password = 'securepassword123';
   await page.goto('/register');
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/password/i).fill('securepassword123');
+  // Exact labels: the form also renders "Confirm Password" and "Show password"
+  // controls, so a /password/i regex matches four elements.
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: /create account|register|sign up/i }).click();
   await expect(page).toHaveURL(/\/chat/);
   return email;
