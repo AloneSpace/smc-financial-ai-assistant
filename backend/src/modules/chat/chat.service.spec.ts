@@ -31,7 +31,9 @@ function fakeResponse(): Response & { events: unknown[]; ended: boolean } {
 
 describe('ChatService', () => {
   let service: ChatService;
-  let conversations: jest.Mocked<Pick<Repository<Conversation>, 'findOne' | 'save'>>;
+  let conversations: jest.Mocked<
+    Pick<Repository<Conversation>, 'findOne' | 'save'>
+  >;
   let messages: jest.Mocked<
     Pick<Repository<Message>, 'find' | 'save' | 'create'>
   >;
@@ -260,7 +262,7 @@ describe('ChatService', () => {
   });
 
   it('never calls the provider when stopped during the grace period', async () => {
-    process.env.CHAT_STOP_GRACE_PERIOD_MS = '5000';
+    process.env.CHAT_STOP_GRACE_PERIOD_MS = '2000';
     const delayed = new ChatService(
       conversations as unknown as Repository<Conversation>,
       messages as unknown as Repository<Message>,

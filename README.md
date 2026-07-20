@@ -217,7 +217,7 @@ All variables are documented in `.env.example`. Never commit `.env`.
 | `ANTHROPIC_API_KEY`            | ⚠️       | —                       | Required when `AI_PROVIDER=anthropic`                              |
 | `ANTHROPIC_MODEL`              | ❌       | `claude-opus-4-8`       | Anthropic model to use                                             |
 | `AI_MAX_HISTORY_MESSAGES`      | ❌       | `20`                    | Max conversation messages sent to the model                        |
-| `CHAT_STOP_GRACE_PERIOD_MS`    | ❌       | `5000`                  | Pause before calling the model so the user can Stop (`0` disables) |
+| `CHAT_STOP_GRACE_PERIOD_MS`    | ❌       | `2000`                  | Pause before calling the model so the user can Stop (`0` disables) |
 | `USAGE_BUDGET_USD`             | ❌       | `1.0`                   | Per-user hourly spending limit in USD                              |
 | `USAGE_RESET_INTERVAL_SECONDS` | ❌       | `3600`                  | How often the usage budget resets                                  |
 | `FRONTEND_URL`                 | ❌       | `http://localhost:5173` | Frontend origin for CORS                                           |

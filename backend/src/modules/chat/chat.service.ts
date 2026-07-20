@@ -22,10 +22,7 @@ import { UsageService } from '../usage/usage.service';
 import { SqlToolService } from './sql-tool.service';
 import { SYSTEM_PROMPT } from './constants/system-prompt.constant';
 import { EXECUTE_SQL_TOOL } from './constants/execute-sql-tool.constant';
-import {
-  ChatStreamEvent,
-  StopStreamResult,
-} from './chat-stream-event.types';
+import { ChatStreamEvent, StopStreamResult } from './chat-stream-event.types';
 import { SendMessageDto } from './dto/send-message.dto';
 import { StopStreamDto } from './dto/stop-stream.dto';
 
@@ -37,7 +34,7 @@ interface ActiveStream {
   getContent: () => string;
 }
 
-const DEFAULT_STOP_GRACE_PERIOD_MS = 5000;
+const DEFAULT_STOP_GRACE_PERIOD_MS = 2000;
 
 const EMPTY_USAGE: AiUsage = {
   promptTokens: 0,
@@ -61,7 +58,8 @@ export class ChatService {
    * the Stop button was even reachable. Set to 0 to disable.
    */
   private readonly stopGracePeriodMs = parseInt(
-    process.env.CHAT_STOP_GRACE_PERIOD_MS ?? String(DEFAULT_STOP_GRACE_PERIOD_MS),
+    process.env.CHAT_STOP_GRACE_PERIOD_MS ??
+      String(DEFAULT_STOP_GRACE_PERIOD_MS),
     10,
   );
 
@@ -239,9 +237,7 @@ export class ChatService {
   }
 
   /** Loads the recent user/assistant turns to send to the model as context. */
-  private async buildHistory(
-    conversationId: string,
-  ): Promise<AiChatMessage[]> {
+  private async buildHistory(conversationId: string): Promise<AiChatMessage[]> {
     const rows = await this.messages.find({
       where: { conversationId },
       order: { createdAt: 'ASC' },
@@ -249,7 +245,10 @@ export class ChatService {
     const turns = rows
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .filter((m) => m.content.length > 0)
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
 
     const capped = turns.slice(-this.aiService.maxHistoryMessages);
     // Anthropic requires the first message to be from the user.
