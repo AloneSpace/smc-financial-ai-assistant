@@ -66,7 +66,7 @@ export function ChatInput({
   const canSend = value.trim().length > 0 && !inputBlocked;
 
   return (
-    <div className="border-t border-border bg-background px-4 py-3">
+    <div className="shrink-0 border-t border-border bg-background px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
       <div className="mx-auto flex w-full max-w-3xl items-end gap-2">
         <textarea
           ref={textareaRef}

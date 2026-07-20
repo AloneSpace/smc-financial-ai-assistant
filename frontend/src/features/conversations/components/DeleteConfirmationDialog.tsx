@@ -60,7 +60,7 @@ export function DeleteConfirmationDialog({
             aria-hidden
             className="h-4 w-4 shrink-0 text-muted-foreground"
           />
-          <p className="truncate text-sm font-medium leading-6 text-foreground">
+          <p className="min-w-0 flex-1 truncate text-sm font-medium leading-6 text-foreground">
             {conversationTitle}
           </p>
         </div>

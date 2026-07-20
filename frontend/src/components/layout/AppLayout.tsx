@@ -9,7 +9,7 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-[100dvh] overflow-hidden">
       {/* Backdrop — mobile only, closes the drawer on tap. */}
       {sidebarOpen && (
         <div
