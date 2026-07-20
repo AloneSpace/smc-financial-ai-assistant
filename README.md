@@ -184,9 +184,20 @@ idempotent, so re-running is safe.
 The application tables (`users`, `conversations`, `messages`) need no step here —
 the backend runs its TypeORM migrations at boot.
 
-### 5. Open the application
+### 5. Seed the demo account (optional)
 
-Navigate to **[http://localhost:5173](http://localhost:5173)**, register an account, and start chatting.
+```bash
+./scripts/seed-demo-user.sh
+```
+
+Registers `demo@finchat.com` / `thisisfordemo` so you can log in without going
+through the register form. The script is idempotent — re-running it reports the
+account already exists. Override with `API_URL`, `DEMO_EMAIL`, `DEMO_PASSWORD`.
+
+### 6. Open the application
+
+Navigate to **[http://localhost:5173](http://localhost:5173)**, log in with the demo
+account above (or register your own), and start chatting.
 
 ---
 
