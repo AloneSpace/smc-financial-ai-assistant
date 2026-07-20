@@ -37,6 +37,8 @@ interface ActiveStream {
   getContent: () => string;
 }
 
+const DEFAULT_STOP_GRACE_PERIOD_MS = 5000;
+
 const EMPTY_USAGE: AiUsage = {
   promptTokens: 0,
   completionTokens: 0,
@@ -52,6 +54,16 @@ const EMPTY_USAGE: AiUsage = {
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
   private readonly activeStreams = new Map<string, ActiveStream>();
+
+  /**
+   * Grace window between `started` and the first upstream call, so the user can
+   * hit Stop before any tokens are spent — short answers used to finish before
+   * the Stop button was even reachable. Set to 0 to disable.
+   */
+  private readonly stopGracePeriodMs = parseInt(
+    process.env.CHAT_STOP_GRACE_PERIOD_MS ?? String(DEFAULT_STOP_GRACE_PERIOD_MS),
+    10,
+  );
 
   constructor(
     @InjectRepository(Conversation)
@@ -113,14 +125,18 @@ export class ChatService {
     };
 
     try {
-      const result = await this.aiService.streamChat({
-        system: SYSTEM_PROMPT,
-        messages: history,
-        tool: EXECUTE_SQL_TOOL,
-        executeSql,
-        onEvent,
-        signal: controller.signal,
-      });
+      await this.delay(this.stopGracePeriodMs, controller.signal);
+      // Stopped during the grace window — never call the provider at all.
+      const result = controller.signal.aborted
+        ? { content: '', usage: EMPTY_USAGE }
+        : await this.aiService.streamChat({
+            system: SYSTEM_PROMPT,
+            messages: history,
+            tool: EXECUTE_SQL_TOOL,
+            executeSql,
+            onEvent,
+            signal: controller.signal,
+          });
       const isPartial = controller.signal.aborted;
       await this.persistResult(
         conversation.id,
@@ -133,6 +149,20 @@ export class ChatService {
       await this.usageService.track(userId, result.usage.estimatedCostUsd);
       this.send(res, { type: 'done', usage: result.usage, isPartial });
     } catch (err) {
+      // A user-initiated stop surfaces here as a thrown abort error whenever the
+      // SDK was still opening the request (i.e. before its own stream loop could
+      // swallow it). That is a normal stop, not a failure — finalise as partial.
+      if (controller.signal.aborted) {
+        await this.persistResult(
+          conversation.id,
+          messageId,
+          toolInvocations,
+          { content: liveContent, usage: EMPTY_USAGE },
+          true,
+        );
+        this.send(res, { type: 'done', usage: EMPTY_USAGE, isPartial: true });
+        return;
+      }
       this.logger.error(
         `Chat stream failed: ${err instanceof Error ? err.message : String(err)}`,
       );
@@ -250,6 +280,9 @@ export class ChatService {
         }),
       );
     }
+    // A turn stopped before the model produced anything has no answer to show —
+    // persisting it would render as an empty assistant bubble.
+    if (isPartial && result.content.length === 0) return;
     await this.messages.save(
       this.messages.create({
         id: messageId,
@@ -260,6 +293,20 @@ export class ChatService {
         isPartial,
       }),
     );
+  }
+
+  /** Resolves after `ms`, or immediately once `signal` aborts. Never rejects. */
+  private delay(ms: number, signal: AbortSignal): Promise<void> {
+    if (ms <= 0 || signal.aborted) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = (): void => {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', done);
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      signal.addEventListener('abort', done, { once: true });
+    });
   }
 
   private initSse(res: Response): void {

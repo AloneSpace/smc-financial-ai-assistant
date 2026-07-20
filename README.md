@@ -215,6 +215,7 @@ All variables are documented in `.env.example`. Never commit `.env`.
 | `OPENAI_API_KEY`               | ✅       | —                       | OpenAI API key                           |
 | `OPENAI_MODEL`                 | ❌       | `gpt-4o`                | OpenAI model to use                      |
 | `OPENAI_MAX_HISTORY_MESSAGES`  | ❌       | `20`                    | Max conversation messages sent to OpenAI |
+| `CHAT_STOP_GRACE_PERIOD_MS`    | ❌       | `5000`                  | Pause before calling the model so the user can Stop (`0` disables) |
 | `USAGE_BUDGET_USD`             | ❌       | `1.0`                   | Per-user hourly spending limit in USD    |
 | `USAGE_RESET_INTERVAL_SECONDS` | ❌       | `3600`                  | How often the usage budget resets        |
 | `FRONTEND_URL`                 | ❌       | `http://localhost:5173` | Frontend origin for CORS                 |

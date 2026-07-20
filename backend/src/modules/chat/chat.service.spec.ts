@@ -68,6 +68,9 @@ describe('ChatService', () => {
     sqlToolService = { execute: jest.fn() };
     usageService = { track: jest.fn().mockResolvedValue(undefined) };
 
+    // The stop grace period is read at construction; disable it so these tests
+    // don't wait 5s. Its own behaviour is covered separately below.
+    process.env.CHAT_STOP_GRACE_PERIOD_MS = '0';
     service = new ChatService(
       conversations as unknown as Repository<Conversation>,
       messages as unknown as Repository<Message>,
@@ -219,6 +222,76 @@ describe('ChatService', () => {
       (e) => (e as { type: string }).type === 'done',
     ) as { isPartial: boolean };
     expect(done.isPartial).toBe(true);
+  });
+
+  it('finalises as a partial stop (not an error) when the AI call throws on abort', async () => {
+    // The SDK throws rather than resolving when aborted while the upstream
+    // request is still opening — that must not surface as "AI service error".
+    aiService.streamChat.mockImplementation((p: AiStreamParams) => {
+      return new Promise<AiStreamResult>((_resolve, reject) => {
+        p.signal.addEventListener('abort', () =>
+          reject(new Error('The operation was aborted')),
+        );
+      });
+    });
+
+    const res = fakeResponse();
+    const streamPromise = service.orchestrateStream(
+      'user-1',
+      { conversationId: 'conv-1', message: 'hi' },
+      res,
+    );
+    await new Promise((r) => setImmediate(r));
+    const started = res.events.find(
+      (e) => (e as { type: string }).type === 'started',
+    ) as { messageId: string };
+    service.stopStream('user-1', {
+      conversationId: 'conv-1',
+      messageId: started.messageId,
+    });
+    await streamPromise;
+
+    const types = res.events.map((e) => (e as { type: string }).type);
+    expect(types).not.toContain('error');
+    const done = res.events.find(
+      (e) => (e as { type: string }).type === 'done',
+    ) as { isPartial: boolean };
+    expect(done.isPartial).toBe(true);
+  });
+
+  it('never calls the provider when stopped during the grace period', async () => {
+    process.env.CHAT_STOP_GRACE_PERIOD_MS = '5000';
+    const delayed = new ChatService(
+      conversations as unknown as Repository<Conversation>,
+      messages as unknown as Repository<Message>,
+      aiService as unknown as AiService,
+      sqlToolService as unknown as SqlToolService,
+      usageService as unknown as UsageService,
+    );
+
+    const res = fakeResponse();
+    const streamPromise = delayed.orchestrateStream(
+      'user-1',
+      { conversationId: 'conv-1', message: 'hi' },
+      res,
+    );
+    await new Promise((r) => setImmediate(r));
+    const started = res.events.find(
+      (e) => (e as { type: string }).type === 'started',
+    ) as { messageId: string };
+    // Still inside the grace window — no upstream call has happened yet.
+    expect(aiService.streamChat).not.toHaveBeenCalled();
+
+    delayed.stopStream('user-1', {
+      conversationId: 'conv-1',
+      messageId: started.messageId,
+    });
+    await streamPromise;
+
+    expect(aiService.streamChat).not.toHaveBeenCalled();
+    const types = res.events.map((e) => (e as { type: string }).type);
+    expect(types).not.toContain('error');
+    expect(types[types.length - 1]).toBe('done');
   });
 
   it('rejects stopping an unknown stream with NotFound', () => {
