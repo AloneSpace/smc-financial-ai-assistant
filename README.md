@@ -159,7 +159,7 @@ To use Claude instead, set `AI_PROVIDER=anthropic` and fill in
 ### 3. Start all services
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
 This starts:
