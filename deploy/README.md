@@ -31,7 +31,7 @@ deploy/
 │   ├── deployment.yaml        ← Redis 7 Deployment
 │   └── service.yaml           ← ClusterIP :6379 (Service name: redis)
 ├── backend/
-│   ├── deployment.yaml        ← NestJS Deployment (liveness + readiness on /health)
+│   ├── deployment.yaml        ← NestJS Deployment (liveness + readiness on /api/health)
 │   └── service.yaml           ← ClusterIP :3000 (Service name: backend)
 └── frontend/
     ├── deployment.yaml        ← Nginx serving built React SPA

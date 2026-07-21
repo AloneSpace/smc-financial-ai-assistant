@@ -409,8 +409,8 @@ smc-fullstack-eng-takehome/
 ## API Reference
 
 All routes are served under the global `/api` prefix — e.g. locally
-`http://localhost:3000/api/auth/register`. `/health` is the one exception and
-is served unprefixed.
+`http://localhost:3000/api/auth/register`. The health check is served at
+`/api/health` (behind the ingress this is `https://finchat.plaintechlab.com/api/health`).
 
 | Method   | Path                     | Auth | Description                            |
 | -------- | ------------------------ | ---- | -------------------------------------- |
@@ -466,7 +466,7 @@ All planning and architecture documents are in [`docs/`](docs/):
 ## Health Check
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3000/api/health
 # → { "status": "ok", "timestamp": "2026-07-15T..." }
 ```
 
