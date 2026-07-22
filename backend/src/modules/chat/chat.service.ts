@@ -279,9 +279,10 @@ export class ChatService {
         }),
       );
     }
-    // A turn stopped before the model produced anything has no answer to show —
-    // persisting it would render as an empty assistant bubble.
-    if (isPartial && result.content.length === 0) return;
+    // A stopped turn is always persisted — even with no content — so the client
+    // can render a "Generation was stopped" bubble as feedback. Empty-content
+    // rows are excluded from future history by buildHistory (never sent to the
+    // provider), so this cannot poison later turns.
     await this.messages.save(
       this.messages.create({
         id: messageId,

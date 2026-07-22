@@ -296,6 +296,40 @@ describe('ChatService', () => {
     expect(types[types.length - 1]).toBe('done');
   });
 
+  it('persists an empty partial assistant message when stopped before any content', async () => {
+    process.env.CHAT_STOP_GRACE_PERIOD_MS = '2000';
+    const delayed = new ChatService(
+      conversations as unknown as Repository<Conversation>,
+      messages as unknown as Repository<Message>,
+      aiService as unknown as AiService,
+      sqlToolService as unknown as SqlToolService,
+      usageService as unknown as UsageService,
+    );
+
+    const res = fakeResponse();
+    const streamPromise = delayed.orchestrateStream(
+      'user-1',
+      { conversationId: 'conv-1', message: 'hi' },
+      res,
+    );
+    await new Promise((r) => setImmediate(r));
+    const started = res.events.find(
+      (e) => (e as { type: string }).type === 'started',
+    ) as { messageId: string };
+
+    // Stop inside the grace window — the provider never runs, so content is ''.
+    delayed.stopStream('user-1', {
+      conversationId: 'conv-1',
+      messageId: started.messageId,
+    });
+    await streamPromise;
+
+    const savedAssistant = messages.save.mock.calls
+      .map((c) => c[0] as Partial<Message>)
+      .find((m) => m.role === 'assistant');
+    expect(savedAssistant).toMatchObject({ content: '', isPartial: true });
+  });
+
   it('rejects stopping an unknown stream with NotFound', () => {
     expect(() =>
       service.stopStream('user-1', {

@@ -37,10 +37,15 @@ export function MessageBubble({
           'max-w-[85%] break-words rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-2 text-card-foreground',
         )}
       >
-        <MarkdownRenderer content={content} />
+        {content ? <MarkdownRenderer content={content} /> : null}
         {isStreaming ? <StreamingIndicator /> : null}
         {isPartial ? (
-          <p className="mt-2 border-t border-border/60 pt-1 text-xs italic text-muted-foreground">
+          <p
+            className={cn(
+              'text-xs italic text-muted-foreground',
+              content && 'mt-2 border-t border-border/60 pt-1',
+            )}
+          >
             Generation was stopped.
           </p>
         ) : null}
