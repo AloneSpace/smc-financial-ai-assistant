@@ -134,7 +134,7 @@ User question
 ### 1. Clone the repository
 
 ```bash
-git clone git@github.com:AloneSpace/smc-financial-ai-assistant.git
+git clone https://github.com/AloneSpace/smc-financial-ai-assistant.git
 cd smc-financial-ai-assistant
 ```
 
@@ -162,42 +162,80 @@ To use Claude instead, set `AI_PROVIDER=anthropic` and fill in
 docker compose up --build -d
 ```
 
-This starts:
+This starts the following services **in dependency order** — Compose waits for
+each prerequisite before starting the next:
 
-- PostgreSQL on port `5432`
-- Redis on port `6379`
-- NestJS backend on port `3000`
-- React frontend on port `5173`
+- **PostgreSQL** on port `5432`
+- **Redis** on port `6379`
+- **`db-import`** (one-shot) — imports `data/financial_data.sql` + indexes once
+  Postgres is healthy, then exits. See [Automatic data & demo-user seeding](#automatic-data--demo-user-seeding).
+- **NestJS backend** on port `3000` — starts only after `db-import` completes
+- **`seed-demo-user`** (one-shot) — registers the demo account once the backend
+  is healthy, then exits
+- **React frontend** on port `5173`
 
-### 4. Import the financial data
+The two one-shot services (`db-import`, `seed-demo-user`) run to completion and
+stop — a `docker ps -a` will show them as `Exited (0)`. This is expected.
 
-In a separate terminal, after the services are healthy:
+> **No manual import step is required** — `docker compose up` seeds both the
+> financial data and the demo account for you. The `./scripts/*.sh` helpers below
+> remain available if you ever need to re-run a step by hand.
+
+### 4. Open the application
+
+Navigate to **[http://localhost:5173](http://localhost:5173)**, log in with the
+[demo account](#-live-demo) (`demo@finchat.com` / `thisisfordemo`) or register
+your own, and start chatting.
+
+---
+
+## Automatic data & demo-user seeding
+
+`compose.yml` defines two one-shot **seed services** so that `docker compose up`
+produces a fully working, logged-in-ready stack with no extra commands:
+
+| Service          | Runs after            | What it does                                                                                     | On completion |
+| ---------------- | --------------------- | ------------------------------------------------------------------------------------------------ | ------------- |
+| `db-import`      | Postgres is healthy   | Imports `data/financial_data.sql` (192 rows) and applies the indexes in `scripts/financial-data-indexes.sql`. | Exits `0`     |
+| `seed-demo-user` | Backend is healthy    | `POST /api/auth/register` for `demo@finchat.com` so the password is Argon2id-hashed by app logic. | Exits `0`     |
+
+**How the ordering is enforced:**
+
+- `db-import` waits on `postgres` via `depends_on: condition: service_healthy`.
+- `backend` waits on `db-import` via `depends_on: condition: service_completed_successfully`,
+  so the API never starts against an empty database.
+- `seed-demo-user` waits on the backend's healthcheck (`GET /api/health`) via
+  `depends_on: condition: service_healthy`.
+
+**Credentials & config:** `db-import` reuses the root `.env` (`env_file: .env`)
+so its Postgres credentials stay in sync with the backend. The demo account is
+overridable with `DEMO_EMAIL`, `DEMO_PASSWORD`, `DEMO_NAME` (defaults:
+`demo@finchat.com` / `thisisfordemo` / `Demo User`).
+
+**Idempotency:** both jobs are safe to re-run. The data SQL drops and recreates
+only the `financial_data` table; the demo seed skips gracefully on HTTP `409`
+(already registered). Re-run either on demand:
 
 ```bash
-./scripts/import-financial-data.sh
+docker compose up -d --force-recreate --no-deps db-import
+docker compose up -d --force-recreate --no-deps seed-demo-user
 ```
 
-This imports `data/financial_data.sql`, applies the `financial_data` indexes
-(`docs/05_DATABASE.md` §8.1), and prints the row count. Both SQL files are
-idempotent, so re-running is safe.
+> The application tables (`users`, `conversations`, `messages`) need no seed
+> step — the backend runs its TypeORM migrations at boot.
 
-The application tables (`users`, `conversations`, `messages`) need no step here —
-the backend runs its TypeORM migrations at boot.
+### Manual alternatives (optional)
 
-### 5. Seed the demo account (optional)
+The equivalent host-side scripts remain available if you prefer to run the steps
+yourself (e.g. against a stack started without the seed services):
 
 ```bash
-./scripts/seed-demo-user.sh
+./scripts/import-financial-data.sh   # import data + indexes
+./scripts/seed-demo-user.sh          # register the demo account
 ```
 
-Registers `demo@finchat.com` / `thisisfordemo` so you can log in without going
-through the register form. The script is idempotent — re-running it reports the
-account already exists. Override with `API_URL`, `DEMO_EMAIL`, `DEMO_PASSWORD`.
-
-### 6. Open the application
-
-Navigate to **[http://localhost:5173](http://localhost:5173)**, log in with the demo
-account above (or register your own), and start chatting.
+Both are idempotent and accept env overrides (`POSTGRES_CONTAINER`,
+`POSTGRES_DB`, `API_URL`, `DEMO_EMAIL`, `DEMO_PASSWORD`, …).
 
 ---
 

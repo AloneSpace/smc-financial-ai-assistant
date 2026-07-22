@@ -39,6 +39,36 @@ services:
       timeout: 3s
       retries: 10
 
+  # One-shot job: import the financial_data dataset + indexes, then exit.
+  # Reuses .env for DB credentials (synced with the backend) and connects to
+  # the postgres service over the compose network. `restart: no` means the
+  # container stops as soon as the import script finishes.
+  db-import:
+    image: postgres:16-alpine
+    container_name: finchat-db-import
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./data:/data:ro
+      - ./scripts:/scripts:ro
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "Importing financial_data into ${POSTGRES_DB:-finchat} ..."
+        psql -v ON_ERROR_STOP=1 -h postgres -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-finchat}" -f /data/financial_data.sql
+        echo "Applying indexes ..."
+        psql -v ON_ERROR_STOP=1 -h postgres -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-finchat}" -f /scripts/financial-data-indexes.sql
+        echo "Done. financial_data row count:"
+        psql -tAc "SELECT COUNT(*) FROM financial_data" -h postgres -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-finchat}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   backend:
     build:
       context: ./backend
@@ -59,10 +89,48 @@ services:
     volumes:
       - ./backend/src:/app/src
       - ./data:/app/data:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      db-import:
+        condition: service_completed_successfully
+
+  # One-shot job: register the demo account through the backend's own
+  # /auth/register endpoint (so the password is Argon2id-hashed by app logic),
+  # then exit. Idempotent — an already-registered account (HTTP 409) is skipped.
+  seed-demo-user:
+    image: curlimages/curl:latest
+    container_name: finchat-seed-demo-user
+    restart: "no"
+    environment:
+      DEMO_EMAIL: ${DEMO_EMAIL:-demo@finchat.com}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-thisisfordemo}
+      DEMO_NAME: ${DEMO_NAME:-Demo User}
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "Seeding demo user $${DEMO_EMAIL} ..."
+        CODE=$$(curl -sS -o /dev/null -w '%{http_code}' \
+          -X POST http://backend:3000/api/auth/register \
+          -H 'Content-Type: application/json' \
+          -d "{\"email\":\"$${DEMO_EMAIL}\",\"name\":\"$${DEMO_NAME}\",\"password\":\"$${DEMO_PASSWORD}\"}")
+        case "$${CODE}" in
+          201|200) echo "Done. Log in with $${DEMO_EMAIL} / $${DEMO_PASSWORD}" ;;
+          409) echo "Already registered — nothing to do." ;;
+          *) echo "error: register failed with HTTP $${CODE}" >&2; exit 1 ;;
+        esac
+    depends_on:
+      backend:
         condition: service_healthy
 
   frontend:
